@@ -1,0 +1,980 @@
+# [Previous code remains the same until the GroupBoxes section]
+
+# Add Outlook GroupBox
+$gbOutlook = New-Object System.Windows.Forms.GroupBox
+$gbOutlook.Text = "Outlook Troubleshooting"
+$gbOutlook.Location = New-Object System.Drawing.Point(10,430)
+$gbOutlook.Size = New-Object System.Drawing.Size(690,200)
+
+# Outlook Profile Section
+$btnCreateProfile = New-Object System.Windows.Forms.Button
+$btnCreateProfile.Location = New-Object System.Drawing.Point(10,20)
+$btnCreateProfile.Size = New-Object System.Drawing.Size(150,23)
+$btnCreateProfile.Text = "Create New Profile"
+
+$btnRepairProfile = New-Object System.Windows.Forms.Button
+$btnRepairProfile.Location = New-Object System.Drawing.Point(170,20)
+$btnRepairProfile.Size = New-Object System.Drawing.Size(150,23)
+$btnRepairProfile.Text = "Repair Profile"
+
+$btnDeleteProfile = New-Object System.Windows.Forms.Button
+$btnDeleteProfile.Location = New-Object System.Drawing.Point(330,20)
+$btnDeleteProfile.Size = New-Object System.Drawing.Size(150,23)
+$btnDeleteProfile.Text = "Delete Profile"
+
+# Cache/Data File Management
+$btnClearCache = New-Object System.Windows.Forms.Button
+$btnClearCache.Location = New-Object System.Drawing.Point(10,50)
+$btnClearCache.Size = New-Object System.Drawing.Size(150,23)
+$btnClearCache.Text = "Clear Outlook Cache"
+
+$btnCompactPST = New-Object System.Windows.Forms.Button
+$btnCompactPST.Location = New-Object System.Drawing.Point(170,50)
+$btnCompactPST.Size = New-Object System.Drawing.Size(150,23)
+$btnCompactPST.Text = "Compact PST Files"
+
+$btnRepairOST = New-Object System.Windows.Forms.Button
+$btnRepairOST.Location = New-Object System.Drawing.Point(330,50)
+$btnRepairOST.Size = New-Object System.Drawing.Size(150,23)
+$btnRepairOST.Text = "Repair OST File"
+
+# Advanced Options
+$btnResetView = New-Object System.Windows.Forms.Button
+$btnResetView.Location = New-Object System.Drawing.Point(10,80)
+$btnResetView.Size = New-Object System.Drawing.Size(150,23)
+$btnResetView.Text = "Reset View Settings"
+
+$btnFixSearch = New-Object System.Windows.Forms.Button
+$btnFixSearch.Location = New-Object System.Drawing.Point(170,80)
+$btnFixSearch.Size = New-Object System.Drawing.Size(150,23)
+$btnFixSearch.Text = "Rebuild Search Index"
+
+$btnSafeMode = New-Object System.Windows.Forms.Button
+$btnSafeMode.Location = New-Object System.Drawing.Point(330,80)
+$btnSafeMode.Size = New-Object System.Drawing.Size(150,23)
+$btnSafeMode.Text = "Start in Safe Mode"
+
+# Status and Information
+$txtOutlookStatus = New-Object System.Windows.Forms.TextBox
+$txtOutlookStatus.Location = New-Object System.Drawing.Point(10,110)
+$txtOutlookStatus.Size = New-Object System.Drawing.Size(670,80)
+$txtOutlookStatus.Multiline = $true
+$txtOutlookStatus.ScrollBars = "Vertical"
+$txtOutlookStatus.ReadOnly = $true
+
+# Add controls to Outlook GroupBox
+$gbOutlook.Controls.AddRange(@(
+    $btnCreateProfile, $btnRepairProfile, $btnDeleteProfile,
+    $btnClearCache, $btnCompactPST, $btnRepairOST,
+    $btnResetView, $btnFixSearch, $btnSafeMode,
+    $txtOutlookStatus
+))
+
+# Add Outlook GroupBox to Troubleshooting tab
+$tabTroubleshooting.Controls.Add($gbOutlook)
+
+# Outlook Event Handlers
+$btnCreateProfile.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook process
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                
+                # Create new profile
+                $outlookKey = "HKCU:\Software\Microsoft\Office\16.0\Outlook\Profiles"
+                $newProfileName = "Outlook_$(Get-Date -Format 'yyyyMMdd')"
+                
+                New-Item -Path "$outlookKey\$newProfileName" -Force | Out-Null
+                
+                # Set as default profile
+                Set-ItemProperty -Path "HKCU:\Software\Microsoft\Office\16.0\Outlook" -Name "DefaultProfile" -Value $newProfileName
+                
+                return "New profile '$newProfileName' created successfully. Please restart Outlook and reconfigure your email account."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error creating profile: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnClearCache.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Clear cache locations
+                $cachePaths = @(
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\RoamCache"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\Offline Address Books"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\*.srs"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\*.xml"
+                    "$env:APPDATA\Microsoft\Outlook\*.nst"
+                )
+
+                foreach ($path in $cachePaths) {
+                    Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
+                }
+
+                return "Outlook cache cleared successfully. Please restart Outlook."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error clearing cache: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnCompactPST.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Find PST files
+                $outlookPaths = @(
+                    "$env:USERPROFILE\Documents"
+                    "$env:USERPROFILE\Desktop"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook"
+                )
+                
+                $pstFiles = foreach ($path in $outlookPaths) {
+                    Get-ChildItem -Path $path -Filter "*.pst" -Recurse -ErrorAction SilentlyContinue
+                }
+
+                if ($pstFiles) {
+                    # Stop Outlook
+                    Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                    Start-Sleep -Seconds 2
+
+                    # Run Scanpst on each file
+                    foreach ($pst in $pstFiles) {
+                        $scanpst = "${env:ProgramFiles(x86)}\Microsoft Office\root\Office16\SCANPST.EXE"
+                        if (Test-Path $scanpst) {
+                            Start-Process -FilePath $scanpst -ArgumentList """$($pst.FullName)""" -Wait
+                        }
+                    }
+                    return "PST files processed: $($pstFiles.Count)"
+                }
+                return "No PST files found"
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error processing PST files: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnRepairOST.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Find OST files
+                $ostPath = "$env:LOCALAPPDATA\Microsoft\Outlook"
+                $ostFiles = Get-ChildItem -Path $ostPath -Filter "*.ost" -ErrorAction SilentlyContinue
+
+                if ($ostFiles) {
+                    foreach ($ost in $ostFiles) {
+                        # Backup old OST
+                        $backupName = "$($ost.FullName).backup"
+                        Move-Item -Path $ost.FullName -Destination $backupName -Force
+                    }
+                    return "OST files backed up. New files will be created when Outlook restarts."
+                }
+                return "No OST files found"
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error repairing OST: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnResetView.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Reset view settings
+                Remove-Item -Path "HKCU:\Software\Microsoft\Office\16.0\Outlook\Preferences" -Recurse -Force -ErrorAction SilentlyContinue
+                Remove-Item -Path "HKCU:\Software\Microsoft\Office\16.0\Outlook\Views" -Recurse -Force -ErrorAction SilentlyContinue
+
+                return "View settings reset successfully. Please restart Outlook."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error resetting views: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnFixSearch.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Windows Search service
+                Stop-Service "Windows Search" -Force
+                Start-Sleep -Seconds 2
+
+                # Delete search index
+                Remove-Item -Path "$env:ProgramData\Microsoft\Search\Data\Applications\Windows\Windows.edb" -Force -ErrorAction SilentlyContinue
+
+                # Restart Windows Search service
+                Start-Service "Windows Search"
+
+                return "Search index rebuilt. Please wait for indexing to complete."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error rebuilding search: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnSafeMode.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Start Outlook in safe mode
+                Start-Process "OUTLOOK.EXE" -ArgumentList "/safe"
+                return "Outlook started in Safe Mode"
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error starting safe mode: $($_.Exception.Message)"
+        }
+    }
+})
+
+# [Previous code remains the same]
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName Microsoft.Office.Interop.Outlook
+
+# Create the main form
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "Shared Mailbox Manager"
+$form.Size = New-Object System.Drawing.Size(600,400)
+$form.StartPosition = "CenterScreen"
+
+# Create labels
+$lblMailbox = New-Object System.Windows.Forms.Label
+$lblMailbox.Location = New-Object System.Drawing.Point(10,20)
+$lblMailbox.Size = New-Object System.Drawing.Size(100,20)
+$lblMailbox.Text = "Mailbox:"
+
+$lblFolder = New-Object System.Windows.Forms.Label
+$lblFolder.Location = New-Object System.Drawing.Point(10,60)
+$lblFolder.Size = New-Object System.Drawing.Size(100,20)
+$lblFolder.Text = "Target Folder:"
+
+# Create ComboBoxes
+$cboMailbox = New-Object System.Windows.Forms.ComboBox
+$cboMailbox.Location = New-Object System.Drawing.Point(120,20)
+$cboMailbox.Size = New-Object System.Drawing.Size(250,20)
+$cboMailbox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+
+$cboFolder = New-Object System.Windows.Forms.ComboBox
+$cboFolder.Location = New-Object System.Drawing.Point(120,60)
+$cboFolder.Size = New-Object System.Drawing.Size(250,20)
+$cboFolder.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+
+# Create ListView for emails
+$listView = New-Object System.Windows.Forms.ListView
+$listView.Location = New-Object System.Drawing.Point(10,100)
+$listView.Size = New-Object System.Drawing.Size(565,200)
+$listView.View = [System.Windows.Forms.View]::Details
+$listView.FullRowSelect = $true
+$listView.MultiSelect = $true
+$listView.Columns.Add("Subject", 250)
+$listView.Columns.Add("Received", 150)
+$listView.Columns.Add("From", 150)
+
+# Create buttons
+$btnRefresh = New-Object System.Windows.Forms.Button
+$btnRefresh.Location = New-Object System.Drawing.Point(380,20)
+$btnRefresh.Size = New-Object System.Drawing.Size(75,23)
+$btnRefresh.Text = "Refresh"
+
+$btnMove = New-Object System.Windows.Forms.Button
+$btnMove.Location = New-Object System.Drawing.Point(10,310)
+$btnMove.Size = New-Object System.Drawing.Size(75,23)
+$btnMove.Text = "Move"
+
+# Function to get Outlook instance
+function Get-OutlookInstance {
+    try {
+        $outlook = [Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application')
+    }
+    catch {
+        $outlook = New-Object -ComObject Outlook.Application
+    }
+    return $outlook
+}
+
+# Function to populate mailboxes
+function Get-SharedMailboxes {
+    $outlook = Get-OutlookInstance
+    $namespace = $outlook.GetNamespace("MAPI")
+    
+    foreach ($store in $namespace.Stores) {
+        if ($store.ExchangeStoreType -eq 1) {  # Shared mailbox
+            $cboMailbox.Items.Add($store.DisplayName)
+        }
+    }
+    
+    if ($cboMailbox.Items.Count -gt 0) {
+        $cboMailbox.SelectedIndex = 0
+    }
+}
+
+# Function to populate folders
+function Get-MailboxFolders {
+    $outlook = Get-OutlookInstance
+    $namespace = $outlook.GetNamespace("MAPI")
+    $selectedMailbox = $cboMailbox.SelectedItem
+    
+    $cboFolder.Items.Clear()
+    
+    foreach ($store in $namespace.Stores) {
+        if ($store.DisplayName -eq $selectedMailbox) {
+            $root = $store.GetRootFolder()
+            Get-SubFolders $root
+            break
+        }
+    }
+    
+    if ($cboFolder.Items.Count -gt 0) {
+        $cboFolder.SelectedIndex = 0
+    }
+}
+
+# Recursive function to get subfolders
+function Get-SubFolders($folder, $indent = "") {
+    $cboFolder.Items.Add("$indent$($folder.Name)")
+    foreach ($subfolder in $folder.Folders) {
+        Get-SubFolders $subfolder "$indent  "
+    }
+}
+
+# Function to populate email list
+function Get-Emails {
+    $listView.Items.Clear()
+    $outlook = Get-OutlookInstance
+    $namespace = $outlook.GetNamespace("MAPI")
+    $selectedMailbox = $cboMailbox.SelectedItem
+    
+    foreach ($store in $namespace.Stores) {
+        if ($store.DisplayName -eq $selectedMailbox) {
+            $inbox = $store.GetRootFolder().Folders | Where-Object { $_.Name -eq "Inbox" }
+            foreach ($mail in $inbox.Items) {
+                $item = New-Object System.Windows.Forms.ListViewItem($mail.Subject)
+                $item.SubItems.Add($mail.ReceivedTime.ToString())
+                $item.SubItems.Add($mail.SenderName)
+                $item.Tag = $mail
+                $listView.Items.Add($item)
+            }
+            break
+        }
+    }
+}
+
+# Function to move selected emails
+function Move-Emails {
+    $outlook = Get-OutlookInstance
+    $namespace = $outlook.GetNamespace("MAPI")
+    $selectedMailbox = $cboMailbox.SelectedItem
+    $selectedFolder = $cboFolder.SelectedItem
+    
+    foreach ($store in $namespace.Stores) {
+        if ($store.DisplayName -eq $selectedMailbox) {
+            $targetFolder = $store.GetRootFolder()
+            foreach ($folderName in $selectedFolder.Split("  ") | Where-Object { $_ }) {
+                $targetFolder = $targetFolder.Folders[$folderName]
+            }
+            
+            foreach ($item in $listView.SelectedItems) {
+                $email = $item.Tag
+                $email.Move($targetFolder)
+            }
+            break
+        }
+    }
+    
+    Get-Emails
+}
+
+# Event handlers
+$cboMailbox.Add_SelectedIndexChanged({ Get-MailboxFolders })
+$btnRefresh.Add_Click({ Get-Emails })
+$btnMove.Add_Click({ Move-Emails })
+
+# Add controls to form
+$form.Controls.AddRange(@($lblMailbox, $lblFolder, $cboMailbox, $cboFolder, $listView, $btnRefresh, $btnMove))
+
+# Initialize
+Get-SharedMailboxes
+
+# Show form
+$form.ShowDialog()
+
+# [Previous code remains the same until the GroupBoxes section]
+
+# Add Outlook GroupBox
+$gbOutlook = New-Object System.Windows.Forms.GroupBox
+$gbOutlook.Text = "Outlook Troubleshooting"
+$gbOutlook.Location = New-Object System.Drawing.Point(10,430)
+$gbOutlook.Size = New-Object System.Drawing.Size(690,200)
+
+# Outlook Profile Section
+$btnCreateProfile = New-Object System.Windows.Forms.Button
+$btnCreateProfile.Location = New-Object System.Drawing.Point(10,20)
+$btnCreateProfile.Size = New-Object System.Drawing.Size(150,23)
+$btnCreateProfile.Text = "Create New Profile"
+
+$btnRepairProfile = New-Object System.Windows.Forms.Button
+$btnRepairProfile.Location = New-Object System.Drawing.Point(170,20)
+$btnRepairProfile.Size = New-Object System.Drawing.Size(150,23)
+$btnRepairProfile.Text = "Repair Profile"
+
+$btnDeleteProfile = New-Object System.Windows.Forms.Button
+$btnDeleteProfile.Location = New-Object System.Drawing.Point(330,20)
+$btnDeleteProfile.Size = New-Object System.Drawing.Size(150,23)
+$btnDeleteProfile.Text = "Delete Profile"
+
+# Cache/Data File Management
+$btnClearCache = New-Object System.Windows.Forms.Button
+$btnClearCache.Location = New-Object System.Drawing.Point(10,50)
+$btnClearCache.Size = New-Object System.Drawing.Size(150,23)
+$btnClearCache.Text = "Clear Outlook Cache"
+
+$btnCompactPST = New-Object System.Windows.Forms.Button
+$btnCompactPST.Location = New-Object System.Drawing.Point(170,50)
+$btnCompactPST.Size = New-Object System.Drawing.Size(150,23)
+$btnCompactPST.Text = "Compact PST Files"
+
+$btnRepairOST = New-Object System.Windows.Forms.Button
+$btnRepairOST.Location = New-Object System.Drawing.Point(330,50)
+$btnRepairOST.Size = New-Object System.Drawing.Size(150,23)
+$btnRepairOST.Text = "Repair OST File"
+
+# Advanced Options
+$btnResetView = New-Object System.Windows.Forms.Button
+$btnResetView.Location = New-Object System.Drawing.Point(10,80)
+$btnResetView.Size = New-Object System.Drawing.Size(150,23)
+$btnResetView.Text = "Reset View Settings"
+
+$btnFixSearch = New-Object System.Windows.Forms.Button
+$btnFixSearch.Location = New-Object System.Drawing.Point(170,80)
+$btnFixSearch.Size = New-Object System.Drawing.Size(150,23)
+$btnFixSearch.Text = "Rebuild Search Index"
+
+$btnSafeMode = New-Object System.Windows.Forms.Button
+$btnSafeMode.Location = New-Object System.Drawing.Point(330,80)
+$btnSafeMode.Size = New-Object System.Drawing.Size(150,23)
+$btnSafeMode.Text = "Start in Safe Mode"
+
+# Status and Information
+$txtOutlookStatus = New-Object System.Windows.Forms.TextBox
+$txtOutlookStatus.Location = New-Object System.Drawing.Point(10,110)
+$txtOutlookStatus.Size = New-Object System.Drawing.Size(670,80)
+$txtOutlookStatus.Multiline = $true
+$txtOutlookStatus.ScrollBars = "Vertical"
+$txtOutlookStatus.ReadOnly = $true
+
+# Add controls to Outlook GroupBox
+$gbOutlook.Controls.AddRange(@(
+    $btnCreateProfile, $btnRepairProfile, $btnDeleteProfile,
+    $btnClearCache, $btnCompactPST, $btnRepairOST,
+    $btnResetView, $btnFixSearch, $btnSafeMode,
+    $txtOutlookStatus
+))
+
+# Add Outlook GroupBox to Troubleshooting tab
+$tabTroubleshooting.Controls.Add($gbOutlook)
+
+# Outlook Event Handlers
+$btnCreateProfile.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook process
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                
+                # Create new profile
+                $outlookKey = "HKCU:\Software\Microsoft\Office\16.0\Outlook\Profiles"
+                $newProfileName = "Outlook_$(Get-Date -Format 'yyyyMMdd')"
+                
+                New-Item -Path "$outlookKey\$newProfileName" -Force | Out-Null
+                
+                # Set as default profile
+                Set-ItemProperty -Path "HKCU:\Software\Microsoft\Office\16.0\Outlook" -Name "DefaultProfile" -Value $newProfileName
+                
+                return "New profile '$newProfileName' created successfully. Please restart Outlook and reconfigure your email account."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error creating profile: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnClearCache.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Clear cache locations
+                $cachePaths = @(
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\RoamCache"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\Offline Address Books"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\*.srs"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\*.xml"
+                    "$env:APPDATA\Microsoft\Outlook\*.nst"
+                )
+
+                foreach ($path in $cachePaths) {
+                    Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
+                }
+
+                return "Outlook cache cleared successfully. Please restart Outlook."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error clearing cache: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnCompactPST.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Find PST files
+                $outlookPaths = @(
+                    "$env:USERPROFILE\Documents"
+                    "$env:USERPROFILE\Desktop"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook"
+                )
+                
+                $pstFiles = foreach ($path in $outlookPaths) {
+                    Get-ChildItem -Path $path -Filter "*.pst" -Recurse -ErrorAction SilentlyContinue
+                }
+
+                if ($pstFiles) {
+                    # Stop Outlook
+                    Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                    Start-Sleep -Seconds 2
+
+                    # Run Scanpst on each file
+                    foreach ($pst in $pstFiles) {
+                        $scanpst = "${env:ProgramFiles(x86)}\Microsoft Office\root\Office16\SCANPST.EXE"
+                        if (Test-Path $scanpst) {
+                            Start-Process -FilePath $scanpst -ArgumentList """$($pst.FullName)""" -Wait
+                        }
+                    }
+                    return "PST files processed: $($pstFiles.Count)"
+                }
+                return "No PST files found"
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error processing PST files: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnRepairOST.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Find OST files
+                $ostPath = "$env:LOCALAPPDATA\Microsoft\Outlook"
+                $ostFiles = Get-ChildItem -Path $ostPath -Filter "*.ost" -ErrorAction SilentlyContinue
+
+                if ($ostFiles) {
+                    foreach ($ost in $ostFiles) {
+                        # Backup old OST
+                        $backupName = "$($ost.FullName).backup"
+                        Move-Item -Path $ost.FullName -Destination $backupName -Force
+                    }
+                    return "OST files backed up. New files will be created when Outlook restarts."
+                }
+                return "No OST files found"
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error repairing OST: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnResetView.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Reset view settings
+                Remove-Item -Path "HKCU:\Software\Microsoft\Office\16.0\Outlook\Preferences" -Recurse -Force -ErrorAction SilentlyContinue
+                Remove-Item -Path "HKCU:\Software\Microsoft\Office\16.0\Outlook\Views" -Recurse -Force -ErrorAction SilentlyContinue
+
+                return "View settings reset successfully. Please restart Outlook."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error resetting views: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnFixSearch.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Windows Search service
+                Stop-Service "Windows Search" -Force
+                Start-Sleep -Seconds 2
+
+                # Delete search index
+                Remove-Item -Path "$env:ProgramData\Microsoft\Search\Data\Applications\Windows\Windows.edb" -Force -ErrorAction SilentlyContinue
+
+                # Restart Windows Search service
+                Start-Service "Windows Search"
+
+                return "Search index rebuilt. Please wait for indexing to complete."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error rebuilding search: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnSafeMode.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Start Outlook in safe mode
+                Start-Process "OUTLOOK.EXE" -ArgumentList "/safe"
+                return "Outlook started in Safe Mode"
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error starting safe mode: $($_.Exception.Message)"
+        }
+    }
+})
+
+# [Previous code remains the same]
+
+
+# [Previous code remains the same until the GroupBoxes section]
+
+# Add Outlook GroupBox
+$gbOutlook = New-Object System.Windows.Forms.GroupBox
+$gbOutlook.Text = "Outlook Troubleshooting"
+$gbOutlook.Location = New-Object System.Drawing.Point(10,430)
+$gbOutlook.Size = New-Object System.Drawing.Size(690,200)
+
+# Outlook Profile Section
+$btnCreateProfile = New-Object System.Windows.Forms.Button
+$btnCreateProfile.Location = New-Object System.Drawing.Point(10,20)
+$btnCreateProfile.Size = New-Object System.Drawing.Size(150,23)
+$btnCreateProfile.Text = "Create New Profile"
+
+$btnRepairProfile = New-Object System.Windows.Forms.Button
+$btnRepairProfile.Location = New-Object System.Drawing.Point(170,20)
+$btnRepairProfile.Size = New-Object System.Drawing.Size(150,23)
+$btnRepairProfile.Text = "Repair Profile"
+
+$btnDeleteProfile = New-Object System.Windows.Forms.Button
+$btnDeleteProfile.Location = New-Object System.Drawing.Point(330,20)
+$btnDeleteProfile.Size = New-Object System.Drawing.Size(150,23)
+$btnDeleteProfile.Text = "Delete Profile"
+
+# Cache/Data File Management
+$btnClearCache = New-Object System.Windows.Forms.Button
+$btnClearCache.Location = New-Object System.Drawing.Point(10,50)
+$btnClearCache.Size = New-Object System.Drawing.Size(150,23)
+$btnClearCache.Text = "Clear Outlook Cache"
+
+$btnCompactPST = New-Object System.Windows.Forms.Button
+$btnCompactPST.Location = New-Object System.Drawing.Point(170,50)
+$btnCompactPST.Size = New-Object System.Drawing.Size(150,23)
+$btnCompactPST.Text = "Compact PST Files"
+
+$btnRepairOST = New-Object System.Windows.Forms.Button
+$btnRepairOST.Location = New-Object System.Drawing.Point(330,50)
+$btnRepairOST.Size = New-Object System.Drawing.Size(150,23)
+$btnRepairOST.Text = "Repair OST File"
+
+# Advanced Options
+$btnResetView = New-Object System.Windows.Forms.Button
+$btnResetView.Location = New-Object System.Drawing.Point(10,80)
+$btnResetView.Size = New-Object System.Drawing.Size(150,23)
+$btnResetView.Text = "Reset View Settings"
+
+$btnFixSearch = New-Object System.Windows.Forms.Button
+$btnFixSearch.Location = New-Object System.Drawing.Point(170,80)
+$btnFixSearch.Size = New-Object System.Drawing.Size(150,23)
+$btnFixSearch.Text = "Rebuild Search Index"
+
+$btnSafeMode = New-Object System.Windows.Forms.Button
+$btnSafeMode.Location = New-Object System.Drawing.Point(330,80)
+$btnSafeMode.Size = New-Object System.Drawing.Size(150,23)
+$btnSafeMode.Text = "Start in Safe Mode"
+
+# Status and Information
+$txtOutlookStatus = New-Object System.Windows.Forms.TextBox
+$txtOutlookStatus.Location = New-Object System.Drawing.Point(10,110)
+$txtOutlookStatus.Size = New-Object System.Drawing.Size(670,80)
+$txtOutlookStatus.Multiline = $true
+$txtOutlookStatus.ScrollBars = "Vertical"
+$txtOutlookStatus.ReadOnly = $true
+
+# Add controls to Outlook GroupBox
+$gbOutlook.Controls.AddRange(@(
+    $btnCreateProfile, $btnRepairProfile, $btnDeleteProfile,
+    $btnClearCache, $btnCompactPST, $btnRepairOST,
+    $btnResetView, $btnFixSearch, $btnSafeMode,
+    $txtOutlookStatus
+))
+
+# Add Outlook GroupBox to Troubleshooting tab
+$tabTroubleshooting.Controls.Add($gbOutlook)
+
+# Outlook Event Handlers
+$btnCreateProfile.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook process
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                
+                # Create new profile
+                $outlookKey = "HKCU:\Software\Microsoft\Office\16.0\Outlook\Profiles"
+                $newProfileName = "Outlook_$(Get-Date -Format 'yyyyMMdd')"
+                
+                New-Item -Path "$outlookKey\$newProfileName" -Force | Out-Null
+                
+                # Set as default profile
+                Set-ItemProperty -Path "HKCU:\Software\Microsoft\Office\16.0\Outlook" -Name "DefaultProfile" -Value $newProfileName
+                
+                return "New profile '$newProfileName' created successfully. Please restart Outlook and reconfigure your email account."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error creating profile: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnClearCache.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Clear cache locations
+                $cachePaths = @(
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\RoamCache"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\Offline Address Books"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\*.srs"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook\*.xml"
+                    "$env:APPDATA\Microsoft\Outlook\*.nst"
+                )
+
+                foreach ($path in $cachePaths) {
+                    Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
+                }
+
+                return "Outlook cache cleared successfully. Please restart Outlook."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error clearing cache: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnCompactPST.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Find PST files
+                $outlookPaths = @(
+                    "$env:USERPROFILE\Documents"
+                    "$env:USERPROFILE\Desktop"
+                    "$env:LOCALAPPDATA\Microsoft\Outlook"
+                )
+                
+                $pstFiles = foreach ($path in $outlookPaths) {
+                    Get-ChildItem -Path $path -Filter "*.pst" -Recurse -ErrorAction SilentlyContinue
+                }
+
+                if ($pstFiles) {
+                    # Stop Outlook
+                    Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                    Start-Sleep -Seconds 2
+
+                    # Run Scanpst on each file
+                    foreach ($pst in $pstFiles) {
+                        $scanpst = "${env:ProgramFiles(x86)}\Microsoft Office\root\Office16\SCANPST.EXE"
+                        if (Test-Path $scanpst) {
+                            Start-Process -FilePath $scanpst -ArgumentList """$($pst.FullName)""" -Wait
+                        }
+                    }
+                    return "PST files processed: $($pstFiles.Count)"
+                }
+                return "No PST files found"
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error processing PST files: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnRepairOST.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Find OST files
+                $ostPath = "$env:LOCALAPPDATA\Microsoft\Outlook"
+                $ostFiles = Get-ChildItem -Path $ostPath -Filter "*.ost" -ErrorAction SilentlyContinue
+
+                if ($ostFiles) {
+                    foreach ($ost in $ostFiles) {
+                        # Backup old OST
+                        $backupName = "$($ost.FullName).backup"
+                        Move-Item -Path $ost.FullName -Destination $backupName -Force
+                    }
+                    return "OST files backed up. New files will be created when Outlook restarts."
+                }
+                return "No OST files found"
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error repairing OST: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnResetView.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Reset view settings
+                Remove-Item -Path "HKCU:\Software\Microsoft\Office\16.0\Outlook\Preferences" -Recurse -Force -ErrorAction SilentlyContinue
+                Remove-Item -Path "HKCU:\Software\Microsoft\Office\16.0\Outlook\Views" -Recurse -Force -ErrorAction SilentlyContinue
+
+                return "View settings reset successfully. Please restart Outlook."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error resetting views: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnFixSearch.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Windows Search service
+                Stop-Service "Windows Search" -Force
+                Start-Sleep -Seconds 2
+
+                # Delete search index
+                Remove-Item -Path "$env:ProgramData\Microsoft\Search\Data\Applications\Windows\Windows.edb" -Force -ErrorAction SilentlyContinue
+
+                # Restart Windows Search service
+                Start-Service "Windows Search"
+
+                return "Search index rebuilt. Please wait for indexing to complete."
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error rebuilding search: $($_.Exception.Message)"
+        }
+    }
+})
+
+$btnSafeMode.Add_Click({
+    if ($txtComputer.Text) {
+        try {
+            $result = Invoke-Command -ComputerName $txtComputer.Text -ScriptBlock {
+                # Stop Outlook
+                Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue | Stop-Process -Force
+                Start-Sleep -Seconds 2
+
+                # Start Outlook in safe mode
+                Start-Process "OUTLOOK.EXE" -ArgumentList "/safe"
+                return "Outlook started in Safe Mode"
+            }
+            $txtOutlookStatus.Text = $result
+        }
+        catch {
+            $txtOutlookStatus.Text = "Error starting safe mode: $($_.Exception.Message)"
+        }
+    }
+})
+
+# [Previous code remains the same]
