@@ -1,0 +1,101 @@
+# Load player data CSV
+$playerData = Import-Csv -Path "C:\Path\To\PlayerData.csv"
+
+# Input player name, column to analyze, target number, and opponent
+$playerName = Read-Host "Enter the player's name"
+$column = Read-Host "What column (e.g., ShotsOnGoal)"
+$targetNumber = [float](Read-Host "Enter a target number")
+$opponentName = Read-Host "Enter the opponent's name"
+
+# Filter data by the specified player name
+$filteredPlayerData = $playerData | Where-Object { $_.FormattedName -eq $playerName }
+
+if ($filteredPlayerData.Count -eq 0) {
+    Write-Output "No data found for the player with name: $playerName"
+} else {
+    # Overall statistics for the player
+    $totalGames = $filteredPlayerData.Count
+    $averageValue = ($filteredPlayerData | Measure-Object -Property $column -Average).Average
+    $medianValue = ($filteredPlayerData | Measure-Object -Property $column -Median).Median
+    $stdDeviation = [math]::Sqrt(($filteredPlayerData | Measure-Object -Property $column -Property -StandardDeviation).StandardDeviation)
+    
+    # Percentage of games meeting the target
+    $percentageAboveTarget = ($filteredPlayerData | Where-Object { $_.$column -ge $targetNumber }).Count / $totalGames * 100
+    
+    Write-Output "Player: $playerName Statistics for $column"
+    Write-Output "Total Games: $totalGames"
+    Write-Output "Average $column: {0:N2}" -f $averageValue
+    Write-Output "Median $column: {0:N2}" -f $medianValue
+    Write-Output "Standard Deviation: {0:N2}" -f $stdDeviation
+    Write-Output "Percentage of games with $column >= $targetNumber: {0:N2}%" -f $percentageAboveTarget
+
+    # Calculate streaks for consecutive games meeting or falling below the target
+    $streaksAbove, $streaksBelow = @(), @()
+    $currentStreakAbove, $currentStreakBelow = 0, 0
+
+    foreach ($game in $filteredPlayerData) {
+        if ($game.$column -ge $targetNumber) {
+            $currentStreakAbove++
+            if ($currentStreakBelow -gt 0) { $streaksBelow += $currentStreakBelow; $currentStreakBelow = 0 }
+        } else {
+            if ($currentStreakAbove -gt 0) { $streaksAbove += $currentStreakAbove; $currentStreakAbove = 0 }
+            $currentStreakBelow++
+        }
+    }
+    if ($currentStreakAbove -gt 0) { $streaksAbove += $currentStreakAbove }
+    if ($currentStreakBelow -gt 0) { $streaksBelow += $currentStreakBelow }
+
+    $longestStreakAbove = ($streaksAbove | Measure-Object -Maximum).Maximum
+    $longestStreakBelow = ($streaksBelow | Measure-Object -Maximum).Maximum
+
+    Write-Output "Longest streak meeting $targetNumber: $longestStreakAbove games"
+    Write-Output "Longest streak below $targetNumber: $longestStreakBelow games"
+
+    # Filter player data for last 5 games against the specified opponent
+    $gamesAgainstOpponent = $filteredPlayerData | Where-Object { $_.Opp -eq $opponentName } | Select-Object -Last 5
+    Write-Output "Last 5 games against $opponentName:"
+    $gamesAgainstOpponent | ForEach-Object { Write-Output "$($_.Date): $($_.$column)" }
+}
+
+# Load goalie data CSV
+$goalieData = Import-Csv -Path "C:\Path\To\GoalieData.csv"
+
+# Input starting goalie name
+$goalieName = Read-Host "Enter the starting goalie's name"
+
+# Filter data for the specified goalie
+$goalieStats = $goalieData | Where-Object { $_.GoalieName -eq $goalieName }
+
+if ($goalieStats.Count -eq 0) {
+    Write-Output "No data found for the goalie with name: $goalieName"
+} else {
+    # Display goalie statistics
+    $totalGoalieGames = $goalieStats.Count
+    $averageGA = ($goalieStats | Measure-Object -Property GoalsAgainst -Average).Average
+    $averageSV = ($goalieStats | Measure-Object -Property SavePercentage -Average).Average
+    $totalWins = ($goalieStats | Where-Object { $_.Result -eq "Win" }).Count
+    $totalLosses = ($goalieStats | Where-Object { $_.Result -eq "Loss" }).Count
+
+    Write-Output "Goalie: $goalieName Statistics"
+    Write-Output "Total games played: $totalGoalieGames"
+    Write-Output "Average Goals Against: {0:N2}" -f $averageGA
+    Write-Output "Average Save Percentage: {0:P2}" -f ($averageSV / 100)
+    Write-Output "Total Wins: $totalWins"
+    Write-Output "Total Losses: $totalLosses"
+
+    # Streaks for consecutive games with high save percentages
+    $streaksAboveSV = @()
+    $currentStreakSV = 0
+
+    foreach ($game in $goalieStats) {
+        if ([float]$game.SavePercentage -ge 90) {
+            $currentStreakSV++
+        } else {
+            if ($currentStreakSV -gt 0) { $streaksAboveSV += $currentStreakSV; $currentStreakSV = 0 }
+        }
+    }
+    if ($currentStreakSV -gt 0) { $streaksAboveSV += $currentStreakSV }
+    $longestSVStreak = if ($streaksAboveSV) { ($streaksAboveSV | Measure-Object -Maximum).Maximum } else { 0 }
+
+    Write-Output "Longest streak with Save Percentage >= 90%: $longestSVStreak games"
+}
