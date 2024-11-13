@@ -1,0 +1,170 @@
+[Sheet: MainAnalysis]
+Player Name	Position	Team	Opponent	Opening Line	Current Line	Line Movement	Minutes Trend	Pace Factor	Opp Def Rating	Matchup History	Referee Impact	Season Avg	L5 Avg	Rotation Impact	Final Score Pred	Confidence	Value
+=TEXT("","@")	=TEXT("","@")	=TEXT("","@")	=TEXT("","@")	=VALUE(0)	=VALUE(0)	=(F2-E2)	=AVERAGE(MinutesLast5)	=VLOOKUP(D2,PaceData,2,FALSE)	=VLOOKUP(D2,DefRatings,2,FALSE)	=AVERAGEIFS(MatchupHistory!C:C,MatchupHistory!A:A,A2,MatchupHistory!B:B,D2)	=VLOOKUP(RefereeCrew,RefData,2,FALSE)	=AVERAGE(SeasonStats)	=AVERAGE(G2:G6)	=GetRotationImpact()	=CalculateFinalPrediction()	=CalculateConfidence()	=ABS(P2-F2)
+
+[Sheet: MatchupHistory]
+Date	Player	Opponent	Points	Minutes	Usage%	Defender	Result
+=TODAY()	=TEXT("","@")	=TEXT("","@")	=VALUE(0)	=VALUE(0)	=VALUE(0)	=TEXT("","@")	=TEXT("","@")
+
+[Sheet: RefData]
+Crew Chief	Points Above Avg	FT Rate	Pace Impact	Tech Rate
+=TEXT("","@")	=VALUE(0)	=VALUE(0)	=VALUE(0)	=VALUE(0)
+
+[Sheet: LineMovement]
+Date Time	Opening Line	Current Line	Money%	Ticket%	Sharp Action	Steam Moves
+=NOW()	=VALUE(0)	=VALUE(0)	=VALUE(0)	=VALUE(0)	=TEXT("","@")	=VALUE(0)
+
+[Sheet: RotationPatterns]
+Team	B2B Rest	3in4 Impact	4in5 Impact	Long Rest	Rotation Type
+=TEXT("","@")	=VALUE(0)	=VALUE(0)	=VALUE(0)	=VALUE(0)	=TEXT("","@")
+
+Custom Functions:
+
+1. GetRotationImpact():
+```vba
+Function GetRotationImpact()
+    Dim impact As Double
+    impact = 1
+    
+    'Check back to back games
+    If DaysRest = 0 Then
+        impact = impact * VLOOKUP(Team, RotationPatterns, 2, FALSE)
+    End If
+    
+    'Check 3 games in 4 nights
+    If Is3in4() Then
+        impact = impact * VLOOKUP(Team, RotationPatterns, 3, FALSE)
+    End If
+    
+    'Check rotation type
+    Select Case VLOOKUP(Team, RotationPatterns, 6, FALSE)
+        Case "Strict": impact = impact * 1.02
+        Case "Variable": impact = impact * 0.98
+        Case "Matchup": impact = impact * GetMatchupAdjustment()
+    End Select
+    
+    Return impact
+End Function
+```
+
+2. CalculateFinalPrediction():
+```vba
+Function CalculateFinalPrediction()
+    'Base projection
+    Dim base As Double = SeasonAvg * (MinutesTrend/32) * (PaceFactor/100)
+    
+    'Adjustments
+    base = base * DefenseAdjustment()
+    base = base * MatchupHistoryImpact()
+    base = base * RefereeImpact()
+    base = base * RotationImpact()
+    base = base * LineMovementSignal()
+    
+    'Recent form weight
+    base = base * 0.7 + Last5Avg * 0.3
+    
+    Return Round(base, 1)
+End Function
+```
+
+3. CalculateConfidence():
+```vba
+Function CalculateConfidence()
+    Dim score As Integer = 0
+    
+    'Sample scoring criteria
+    If LineMovement > 0 Then score += 1
+    If SharpAction = "Yes" Then score += 2
+    If MatchupAdvantage > 0 Then score += 1
+    If RefereeFavorable Then score += 1
+    If RotationAdvantage Then score += 1
+    If Value >= 3 Then score += 2
+    
+    Select Case score
+        Case 0 To 2: Return "Low"
+        Case 3 To 5: Return "Medium"
+        Case Else: Return "High"
+    End Select
+End Function
+```
+
+New Features:
+
+1. Matchup Analysis:
+- Historical performance vs specific defenders
+- Defender on/off court impact
+- Position vs Team stats
+- Recent matchup trends
+
+2. Referee Analysis:
+- Crew chief tendencies
+- Free throw rate impact
+- Pace of play preferences
+- Technical foul frequency
+- Home/Away whistle bias
+
+3. Line Movement:
+- Opening vs current line
+- Money percentage
+- Ticket percentage
+- Sharp action indicators
+- Steam move tracking
+- Reverse line movement alerts
+
+4. Team Rotation Analysis:
+- Back-to-back impacts
+- Schedule density effects
+- Rest advantage calculation
+- Rotation pattern classification
+- Minute distribution projections
+
+Conditional Formatting:
+
+1. Line Movement:
+- Green: Line moving in prediction direction
+- Red: Line moving against prediction
+- Bold: Sharp action detected
+
+2. Matchup History:
+- Highlight significant player vs team trends
+- Color code defender matchups
+- Indicate pace mismatches
+
+3. Referee Impact:
+- Highlight crews with strong over/under tendencies
+- Mark significant free throw rate variances
+- Flag pace-impacting officials
+
+Dashboard Features:
+
+1. Main Analysis:
+- Quick view of all key metrics
+- Confidence indicator
+- Value calculation
+- Trend indicators
+
+2. Historical Performance:
+- Win rate by confidence level
+- Referee crew performance
+- Defender matchup results
+- Rest impact analysis
+
+3. Market Analysis:
+- Line movement charts
+- Money vs ticket percentage
+- Sharp action tracking
+- Steam move alerts
+
+Would you like me to explain any specific calculations or add any other features? We could potentially add:
+- Weather impact for outdoor stadiums
+- Arena shooting background analysis
+- Travel distance impact
+- TV broadcast influence
+
+Also, I could create specific worksheets for:
+- Bankroll management
+- Unit size calculations
+- ROI tracking
+- Variance analysis
+
+Let me know if you'd like any of these additions or have other specific metrics in mind!
