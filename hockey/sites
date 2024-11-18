@@ -6,3 +6,33 @@ https://moneypuck.com/lines.htm
 https://leftwinglock.com/line-changes/
 https://frozenpool.dobbersports.com/frozenpool_report.php?pos=Skaters&team=Active&mingp=0&rookie=All&period=LAST14%3AR&startdate=&enddate=&report=Most+Consistent&reportdata_length=30
 https://data.vsin.com/nhl/games/?gamedate=2024-11-17
+ did some google search a wihle ago on this topic. Here's some resources I found. In some basic models, each team has a elo rating and the winrate is a function of the elo difference, you collect historic data, compute parameters to minimize the prediction error of the model and find elo of each team. You can also factor in other variables like home advantage. In some more complicated model, you may create a bayesian model and try to predict the goal count in a soccer match and use markov chain monte carlo to compute the probability distribution, then you can do simulation.
+
+https://www.kaggle.com/competitions/march-machine-learning-mania-2023/discussion/401588
+
+https://fivethirtyeight.com/methodology/how-our-club-soccer-predictions-work/ https://fivethirtyeight.com/methodology/how-our-nhl-predictions-work/ https://fivethirtyeight.com/methodology/how-our-march-madness-predictions-work/ https://fivethirtyeight.com/methodology/how-our-march-madness-predictions-work-2/ https://fivethirtyeight.com/methodology/how-our-nba-predictions-work/ https://fivethirtyeight.com/methodology/how-our-wnba-predictions-work/
+
+https://www.janvanhaaren.be/assets/papers/kdd-2021-win-probability.pdf https://github.com/DanielWeitzenfeld/passtheroc_source2/tree/master/content
+
+https://analytics.bet/articles-02/
+
+https://open.substack.com/pub/neilpaine/p/where-to-find-my-stats-rankings-content
+He recommends the books
+Mathletics: How Gamblers, Managers, and Sports Enthusiasts Use Mathematics in Baseball, Basketball, and Football
+who's #1?: the science of rating and ranking
+
+Elo Ratings and the Sports Model: a Neglected Topic in Applied Probability?
+
+https://baseballwithr.wordpress.com/
+https://www.r-bloggers.com/2021/08/10-steps-to-get-started-in-sports-analytics/
+
+https://statmodeling.stat.columbia.edu/category/sports/
+https://www.pymc.io/projects/examples/en/latest/gallery.html
+http://www.dukesportsanalytics.com/projects
+https://www.austinrochford.com/tags.html
+Has some examples of applying bayesian inference to sport analytics.
+
+https://learnbayesstats.com/sports-analytics/
+
+https://open.substack.com/pub/bowtiedbettor
+Seems to have some useful contents but most are locked behind paywall
