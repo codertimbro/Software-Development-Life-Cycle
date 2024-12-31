@@ -329,3 +329,856 @@ function Show-QLSProperties {
 
 # Custom start number:
 # Show-QLSProperties -Length 15 -StartNumber 5 -DetailedAnalysis
+
+
+
+function Get-QLSequence {
+    param (
+        [Parameter(Mandatory = $true)]
+        [int]$Length,
+        
+        [Parameter(Mandatory = $false)]
+        [int]$StartNumber = 1,
+
+        [Parameter(Mandatory = $false)]
+        [double]$Alpha = (1 + [Math]::Sqrt(5)) / 2  # Golden ratio as default
+    )
+
+    $sequence = New-Object double[] $Length
+    $sequence[0] = $StartNumber
+    
+    for ($i = 1; $i -lt $Length; $i++) {
+        $sequence[$i] = [Math]::Floor($Alpha * ($i + 1))
+    }
+
+    $differences = @()
+    for ($i = 1; $i -lt $Length; $i++) {
+        $differences += $sequence[$i] - $sequence[$i - 1]
+    }
+
+    $secondOrderDifferences = @()
+    for ($i = 1; $i -lt $differences.Count; $i++) {
+        $secondOrderDifferences += $differences[$i] - $differences[$i - 1]
+    }
+
+    return [PSCustomObject]@{
+        Sequence = $sequence
+        Differences = $differences
+        SecondOrderDifferences = $secondOrderDifferences
+        Alpha = $Alpha
+        Info = "QLS using multiplier $Alpha"
+    }
+}
+
+function Get-AdvancedSequenceAnalytics {
+    param (
+        [Parameter(Mandatory = $true)]
+        [double[]]$Sequence,
+        [Parameter(Mandatory = $true)]
+        [double[]]$Differences
+    )
+
+    # Growth rates
+    $growthRates = @()
+    for ($i = 1; $i -lt $Sequence.Count; $i++) {
+        if ($Sequence[$i-1] -ne 0) {
+            $growthRates += $Sequence[$i] / $Sequence[$i-1]
+        }
+    }
+
+    # Advanced statistical measures
+    $stats = @{
+        Mean = ($Sequence | Measure-Object -Average).Average
+        Median = $Sequence | Sort-Object | Select-Object -Index ([Math]::Floor($Sequence.Count/2))
+        Mode = $Sequence | Group-Object | Sort-Object Count -Descending | Select-Object -First 1 | Select-Object -ExpandProperty Name
+        StandardDeviation = [Math]::Sqrt(($Sequence | ForEach-Object { [Math]::Pow($_ - ($Sequence | Measure-Object -Average).Average, 2) } | Measure-Object -Average).Average)
+        Skewness = Get-Skewness $Sequence
+        Kurtosis = Get-Kurtosis $Sequence
+        DifferenceMean = ($Differences | Measure-Object -Average).Average
+        DifferenceVariance = ($Differences | ForEach-Object { [Math]::Pow($_ - ($Differences | Measure-Object -Average).Average, 2) } | Measure-Object -Average).Average
+        Quartiles = Get-Quartiles $Sequence
+        IQR = (Get-Quartiles $Sequence)[2] - (Get-Quartiles $Sequence)[0]
+    }
+
+    return [PSCustomObject]@{
+        Statistics = $stats
+        GrowthRates = $growthRates
+        AverageGrowthRate = ($growthRates | Measure-Object -Average).Average
+    }
+}
+
+function Get-Skewness {
+    param([double[]]$Data)
+    $mean = ($Data | Measure-Object -Average).Average
+    $std = [Math]::Sqrt(($Data | ForEach-Object { [Math]::Pow($_ - $mean, 2) } | Measure-Object -Average).Average)
+    $n = $Data.Count
+    $sum = 0
+    foreach ($x in $Data) {
+        $sum += [Math]::Pow(($x - $mean) / $std, 3)
+    }
+    return $sum * $n / (($n - 1) * ($n - 2))
+}
+
+function Get-Kurtosis {
+    param([double[]]$Data)
+    $mean = ($Data | Measure-Object -Average).Average
+    $std = [Math]::Sqrt(($Data | ForEach-Object { [Math]::Pow($_ - $mean, 2) } | Measure-Object -Average).Average)
+    $n = $Data.Count
+    $sum = 0
+    foreach ($x in $Data) {
+        $sum += [Math]::Pow(($x - $mean) / $std, 4)
+    }
+    return ($sum * $n * ($n + 1) / (($n - 1) * ($n - 2) * ($n - 3))) - (3 * ($n - 1) * ($n - 1) / (($n - 2) * ($n - 3)))
+}
+
+function Get-Quartiles {
+    param([double[]]$Data)
+    $sorted = $Data | Sort-Object
+    $n = $sorted.Count
+    $q1Index = [Math]::Floor($n / 4)
+    $q2Index = [Math]::Floor($n / 2)
+    $q3Index = [Math]::Floor(3 * $n / 4)
+    return @($sorted[$q1Index], $sorted[$q2Index], $sorted[$q3Index])
+}
+
+function Get-PatternAnalysis {
+    param(
+        [Parameter(Mandatory = $true)]
+        [double[]]$Sequence,
+        [Parameter(Mandatory = $true)]
+        [double[]]$Differences
+    )
+
+    # Pattern detection
+    $patterns = @{
+        IsMonotonic = $true
+        HasCycles = $false
+        CycleLength = 0
+        TrendType = "Unknown"
+        LocalExtrema = @()
+    }
+
+    # Check monotonicity
+    for ($i = 1; $i -lt $Sequence.Count; $i++) {
+        if ($Sequence[$i] -lt $Sequence[$i-1]) {
+            $patterns.IsMonotonic = $false
+            break
+        }
+    }
+
+    # Detect cycles
+    $diffPattern = @{}
+    $currentPattern = @()
+    for ($i = 0; $i -lt $Differences.Count; $i++) {
+        $currentPattern += $Differences[$i]
+        $patternKey = $currentPattern -join ","
+        if ($diffPattern.ContainsKey($patternKey)) {
+            $patterns.HasCycles = $true
+            $patterns.CycleLength = $currentPattern.Count
+            break
+        }
+        $diffPattern[$patternKey] = $i
+    }
+
+    # Detect trend
+    $firstHalf = $Sequence[0..([Math]::Floor($Sequence.Count/2))]
+    $secondHalf = $Sequence[([Math]::Floor($Sequence.Count/2))..($Sequence.Count-1)]
+    $firstHalfMean = ($firstHalf | Measure-Object -Average).Average
+    $secondHalfMean = ($secondHalf | Measure-Object -Average).Average
+
+    if ([Math]::Abs($secondHalfMean - $firstHalfMean) -lt 0.0001) {
+        $patterns.TrendType = "Stable"
+    }
+    elseif ($secondHalfMean -gt $firstHalfMean) {
+        $patterns.TrendType = "Increasing"
+    }
+    else {
+        $patterns.TrendType = "Decreasing"
+    }
+
+    # Find local extrema
+    for ($i = 1; $i -lt $Sequence.Count - 1; $i++) {
+        if ($Sequence[$i] -gt $Sequence[$i-1] -and $Sequence[$i] -gt $Sequence[$i+1]) {
+            $patterns.LocalExtrema += @{
+                Type = "Maximum"
+                Index = $i
+                Value = $Sequence[$i]
+            }
+        }
+        elseif ($Sequence[$i] -lt $Sequence[$i-1] -and $Sequence[$i] -lt $Sequence[$i+1]) {
+            $patterns.LocalExtrema += @{
+                Type = "Minimum"
+                Index = $i
+                Value = $Sequence[$i]
+            }
+        }
+    }
+
+    return $patterns
+}
+
+function Compare-QLSequences {
+    param (
+        [Parameter(Mandatory = $true)]
+        [int]$Length,
+        [Parameter(Mandatory = $true)]
+        [double[]]$AlphaValues
+    )
+
+    $comparisons = @()
+    foreach ($alpha in $AlphaValues) {
+        $seq = Get-QLSequence -Length $Length -Alpha $alpha
+        $analytics = Get-AdvancedSequenceAnalytics -Sequence $seq.Sequence -Differences $seq.Differences
+        $patterns = Get-PatternAnalysis -Sequence $seq.Sequence -Differences $seq.Differences
+
+        $comparisons += [PSCustomObject]@{
+            Alpha = $alpha
+            Sequence = $seq
+            Analytics = $analytics
+            Patterns = $patterns
+        }
+    }
+
+    return $comparisons
+}
+
+function Show-SequenceVisualization {
+    param (
+        [Parameter(Mandatory = $true)]
+        [double[]]$Sequence,
+        [Parameter(Mandatory = $true)]
+        [string]$Title
+    )
+
+    # Create ASCII visualization
+    $maxVal = ($Sequence | Measure-Object -Maximum).Maximum
+    $minVal = ($Sequence | Measure-Object -Minimum).Minimum
+    $height = 20
+    $width = $Sequence.Count
+    $scale = $height / ($maxVal - $minVal)
+    
+    $canvas = New-Object 'string[]' $height
+    for ($i = 0; $i -lt $height; $i++) {
+        $canvas[$i] = " " * $width
+    }
+
+    # Plot sequence
+    for ($i = 0; $i -lt $Sequence.Count; $i++) {
+        $y = [Math]::Floor(($Sequence[$i] - $minVal) * $scale)
+        $y = [Math]::Min($y, $height - 1)
+        $canvas[$y] = $canvas[$y].Remove($i, 1).Insert($i, "*")
+    }
+
+    # Display visualization
+    Write-Host "`n$Title"
+    Write-Host ("-" * ($Title.Length))
+    for ($i = $height - 1; $i -ge 0; $i--) {
+        Write-Host $canvas[$i]
+    }
+    Write-Host ("-" * $width)
+}
+
+function Show-QLSProperties {
+    param (
+        [Parameter(Mandatory = $true)]
+        [int]$Length,
+        
+        [Parameter(Mandatory = $false)]
+        [int]$StartNumber = 1,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$DetailedAnalysis,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Visualize,
+
+        [Parameter(Mandatory = $false)]
+        [double[]]$CompareAlphas
+    )
+
+    $result = Get-QLSequence -Length $Length -StartNumber $StartNumber
+    $analytics = Get-AdvancedSequenceAnalytics -Sequence $result.Sequence -Differences $result.Differences
+    $patterns = Get-PatternAnalysis -Sequence $result.Sequence -Differences $result.Differences
+    
+    Write-Host "Quasilinear Sequence Analysis" -ForegroundColor Cyan
+    Write-Host "============================" -ForegroundColor Cyan
+    
+    if ($Visualize) {
+        Show-SequenceVisualization -Sequence $result.Sequence -Title "Sequence Visualization"
+        Show-SequenceVisualization -Sequence $result.Differences -Title "Differences Visualization"
+    }
+    
+    Write-Host "`nBasic Properties:" -ForegroundColor Yellow
+    Write-Host "Sequence: $($result.Sequence -join ', ')"
+    Write-Host "First-Order Differences: $($result.Differences -join ', ')"
+    Write-Host "Second-Order Differences: $($result.SecondOrderDifferences -join ', ')"
+    
+    Write-Host "`nStatistical Analysis:" -ForegroundColor Yellow
+    $analytics.Statistics.GetEnumerator() | Sort-Object Name | ForEach-Object {
+        Write-Host "$($_.Key): $($_.Value)"
+    }
+    
+    Write-Host "`nPattern Analysis:" -ForegroundColor Yellow
+    Write-Host "Monotonic: $($patterns.IsMonotonic)"
+    Write-Host "Has Cycles: $($patterns.HasCycles)"
+    Write-Host "Cycle Length: $($patterns.CycleLength)"
+    Write-Host "Trend Type: $($patterns.TrendType)"
+    
+    if ($patterns.LocalExtrema.Count -gt 0) {
+        Write-Host "`nLocal Extrema:"
+        $patterns.LocalExtrema | ForEach-Object {
+            Write-Host "  $($_.Type) at index $($_.Index): $($_.Value)"
+        }
+    }
+
+    if ($CompareAlphas) {
+        Write-Host "`nComparative Analysis:" -ForegroundColor Yellow
+        $comparisons = Compare-QLSequences -Length $Length -AlphaValues $CompareAlphas
+        
+        foreach ($comp in $comparisons) {
+            Write-Host "`nα = $($comp.Alpha):"
+            Write-Host "  Average Growth Rate: $($comp.Analytics.AverageGrowthRate)"
+            Write-Host "  Trend Type: $($comp.Patterns.TrendType)"
+            Write-Host "  Has Cycles: $($comp.Patterns.HasCycles)"
+        }
+    }
+}
+
+# Example usage:
+# Basic analysis with visualization:
+# Show-QLSProperties -Length 15 -Visualize
+
+# Detailed analysis with multiple alpha values:
+# Show-QLSProperties -Length 15 -DetailedAnalysis -CompareAlphas @(1.618, 2.236, 2.718)
+
+# Full analysis:
+# Show-QLSProperties -Length 20 -DetailedAnalysis -Visualize -CompareAlphas @(1.618, 2.236, 2.718) -StartNumber 1
+
+
+# [Previous functions remain the same until Get-PatternAnalysis]
+
+function Get-PatternAnalysis {
+    param(
+        [Parameter(Mandatory = $true)]
+        [double[]]$Sequence,
+        [Parameter(Mandatory = $true)]
+        [double[]]$Differences,
+        [Parameter(Mandatory = $false)]
+        [double]$Tolerance = 0.0001
+    )
+
+    # Initialize pattern storage
+    $patterns = @{
+        IsMonotonic = $true
+        HasCycles = $false
+        CycleLength = 0
+        TrendType = "Unknown"
+        LocalExtrema = @()
+        RecurrencePatterns = @()
+        GeometricProperties = @{}
+        ArithmeticProperties = @{}
+        SubsequencePatterns = @()
+        SymmetryProperties = @{}
+        StepPatterns = @()
+    }
+
+    # Check monotonicity and basic trends (keeping existing code)
+    for ($i = 1; $i -lt $Sequence.Count; $i++) {
+        if ($Sequence[$i] -lt $Sequence[$i-1]) {
+            $patterns.IsMonotonic = $false
+            break
+        }
+    }
+
+    # Detect arithmetic patterns
+    $patterns.ArithmeticProperties = Get-ArithmeticPatterns -Sequence $Sequence -Differences $Differences -Tolerance $Tolerance
+
+    # Detect geometric patterns
+    $patterns.GeometricProperties = Get-GeometricPatterns -Sequence $Sequence -Tolerance $Tolerance
+
+    # Detect recurrence patterns
+    $patterns.RecurrencePatterns = Get-RecurrencePatterns -Sequence $Sequence -Tolerance $Tolerance
+
+    # Detect subsequence patterns
+    $patterns.SubsequencePatterns = Get-SubsequencePatterns -Sequence $Sequence -Tolerance $Tolerance
+
+    # Detect symmetry properties
+    $patterns.SymmetryProperties = Get-SymmetryProperties -Sequence $Sequence -Tolerance $Tolerance
+
+    # Detect step patterns
+    $patterns.StepPatterns = Get-StepPatterns -Differences $Differences -Tolerance $Tolerance
+
+    return $patterns
+}
+
+function Get-ArithmeticPatterns {
+    param(
+        [double[]]$Sequence,
+        [double[]]$Differences,
+        [double]$Tolerance
+    )
+
+    $arithmeticPatterns = @{
+        IsArithmetic = $false
+        CommonDifference = $null
+        ArithmeticSegments = @()
+        AlternatingDifferences = $false
+        WeightedDifferences = @{}
+    }
+
+    # Check for constant differences
+    $diffSet = $Differences | Select-Object -Unique
+    if ($diffSet.Count -eq 1) {
+        $arithmeticPatterns.IsArithmetic = $true
+        $arithmeticPatterns.CommonDifference = $diffSet[0]
+    }
+
+    # Detect arithmetic segments
+    $currentSegment = @($Sequence[0])
+    $currentDiff = $Differences[0]
+    
+    for ($i = 1; $i -lt $Sequence.Count; $i++) {
+        if ([Math]::Abs($Differences[$i-1] - $currentDiff) -le $Tolerance) {
+            $currentSegment += $Sequence[$i]
+        }
+        else {
+            if ($currentSegment.Count -ge 3) {
+                $arithmeticPatterns.ArithmeticSegments += @{
+                    Segment = $currentSegment
+                    Difference = $currentDiff
+                }
+            }
+            $currentSegment = @($Sequence[$i-1], $Sequence[$i])
+            $currentDiff = $Differences[$i-1]
+        }
+    }
+
+    # Check for alternating differences
+    if ($Differences.Count -ge 4) {
+        $evenDiffs = $Differences[0..($Differences.Count-1)] | Where-Object {$_ % 2 -eq 0}
+        $oddDiffs = $Differences[1..($Differences.Count-1)] | Where-Object {$_ % 2 -eq 1}
+        
+        if (($evenDiffs | Select-Object -Unique).Count -eq 1 -and 
+            ($oddDiffs | Select-Object -Unique).Count -eq 1) {
+            $arithmeticPatterns.AlternatingDifferences = $true
+        }
+    }
+
+    return $arithmeticPatterns
+}
+
+function Get-GeometricPatterns {
+    param(
+        [double[]]$Sequence,
+        [double]$Tolerance
+    )
+
+    $geometricPatterns = @{
+        IsGeometric = $false
+        CommonRatio = $null
+        GeometricSegments = @()
+        PowerLawGrowth = $false
+        ExponentialGrowth = $false
+    }
+
+    # Calculate ratios
+    $ratios = @()
+    for ($i = 1; $i -lt $Sequence.Count; $i++) {
+        if ([Math]::Abs($Sequence[$i-1]) -gt $Tolerance) {
+            $ratios += $Sequence[$i] / $Sequence[$i-1]
+        }
+    }
+
+    # Check for constant ratio
+    $ratioSet = $ratios | Where-Object {$_} | Select-Object -Unique
+    if ($ratioSet.Count -eq 1) {
+        $geometricPatterns.IsGeometric = $true
+        $geometricPatterns.CommonRatio = $ratioSet[0]
+    }
+
+    # Detect power law growth
+    $logSequence = $Sequence | Where-Object {$_ -gt 0} | ForEach-Object {[Math]::Log($_)}
+    if ($logSequence.Count -ge 3) {
+        $logDiffs = @()
+        for ($i = 1; $i -lt $logSequence.Count; $i++) {
+            $logDiffs += $logSequence[$i] - $logSequence[$i-1]
+        }
+        
+        $logDiffSet = $logDiffs | Select-Object -Unique
+        if ($logDiffSet.Count -eq 1) {
+            $geometricPatterns.PowerLawGrowth = $true
+        }
+    }
+
+    return $geometricPatterns
+}
+
+function Get-RecurrencePatterns {
+    param(
+        [double[]]$Sequence,
+        [double]$Tolerance
+    )
+
+    $recurrencePatterns = @{
+        HasRecurrence = $false
+        RecurrenceRelations = @()
+        RecurrenceLength = 0
+        RecurrenceType = "Unknown"
+    }
+
+    # Check for Fibonacci-like recurrence
+    $isFibonacci = $true
+    for ($i = 2; $i -lt $Sequence.Count; $i++) {
+        if ([Math]::Abs($Sequence[$i] - ($Sequence[$i-1] + $Sequence[$i-2])) -gt $Tolerance) {
+            $isFibonacci = $false
+            break
+        }
+    }
+
+    if ($isFibonacci) {
+        $recurrencePatterns.HasRecurrence = $true
+        $recurrencePatterns.RecurrenceType = "Fibonacci"
+        $recurrencePatterns.RecurrenceLength = 2
+    }
+
+    # Check for Tribonacci-like recurrence
+    $isTribonacci = $true
+    for ($i = 3; $i -lt $Sequence.Count; $i++) {
+        if ([Math]::Abs($Sequence[$i] - ($Sequence[$i-1] + $Sequence[$i-2] + $Sequence[$i-3])) -gt $Tolerance) {
+            $isTribonacci = $false
+            break
+        }
+    }
+
+    if ($isTribonacci) {
+        $recurrencePatterns.HasRecurrence = $true
+        $recurrencePatterns.RecurrenceType = "Tribonacci"
+        $recurrencePatterns.RecurrenceLength = 3
+    }
+
+    return $recurrencePatterns
+}
+
+function Get-SubsequencePatterns {
+    param(
+        [double[]]$Sequence,
+        [double]$Tolerance
+    )
+
+    $subsequencePatterns = @{
+        RepeatingSubsequences = @()
+        AlternatingSubsequences = @()
+        NestedPatterns = @()
+    }
+
+    # Detect repeating subsequences
+    for ($length = 2; $length -le [Math]::Floor($Sequence.Count / 2); $length++) {
+        for ($start = 0; $start -le $Sequence.Count - 2 * $length; $start++) {
+            $subsequence = $Sequence[$start..($start+$length-1)]
+            $nextSubsequence = $Sequence[($start+$length)..($start+2*$length-1)]
+            
+            $isMatch = $true
+            for ($i = 0; $i -lt $length; $i++) {
+                if ([Math]::Abs($subsequence[$i] - $nextSubsequence[$i]) -gt $Tolerance) {
+                    $isMatch = $false
+                    break
+                }
+            }
+            
+            if ($isMatch) {
+                $subsequencePatterns.RepeatingSubsequences += @{
+                    Pattern = $subsequence
+                    StartIndex = $start
+                    Length = $length
+                }
+            }
+        }
+    }
+
+    return $subsequencePatterns
+}
+
+function Get-SymmetryProperties {
+    param(
+        [double[]]$Sequence,
+        [double]$Tolerance
+    )
+
+    $symmetryProperties = @{
+        HasReflectionalSymmetry = $false
+        SymmetryPoints = @()
+        HasRotationalSymmetry = $false
+        RotationOrder = 0
+    }
+
+    # Check for reflectional symmetry
+    $n = $Sequence.Count
+    $isSymmetric = $true
+    for ($i = 0; $i -lt [Math]::Floor($n/2); $i++) {
+        if ([Math]::Abs($Sequence[$i] - $Sequence[$n-1-$i]) -gt $Tolerance) {
+            $isSymmetric = $false
+            break
+        }
+    }
+    $symmetryProperties.HasReflectionalSymmetry = $isSymmetric
+
+    return $symmetryProperties
+}
+
+function Get-StepPatterns {
+    param(
+        [double[]]$Differences,
+        [double]$Tolerance
+    )
+
+    $stepPatterns = @{
+        HasStepPattern = $false
+        StepSize = @()
+        StepFrequency = @()
+        IsRegular = $false
+    }
+
+    # Detect step changes
+    $steps = @()
+    $currentStep = $Differences[0]
+    $stepCount = 1
+
+    for ($i = 1; $i -lt $Differences.Count; $i++) {
+        if ([Math]::Abs($Differences[$i] - $currentStep) -le $Tolerance) {
+            $stepCount++
+        }
+        else {
+            $steps += @{
+                Value = $currentStep
+                Count = $stepCount
+            }
+            $currentStep = $Differences[$i]
+            $stepCount = 1
+        }
+    }
+
+    if ($steps.Count -gt 0) {
+        $stepPatterns.HasStepPattern = $true
+        $stepPatterns.StepSize = $steps | ForEach-Object { $_.Value }
+        $stepPatterns.StepFrequency = $steps | ForEach-Object { $_.Count }
+        $stepPatterns.IsRegular = ($steps | Select-Object -ExpandProperty Count -Unique).Count -eq 1
+    }
+
+    return $stepPatterns
+}
+
+# [Previous functions remain the same after Get-StepPatterns]
+
+# Update Show-QLSProperties to include new pattern information
+function Show-QLSProperties {
+    # [Previous parameters remain the same]
+
+    # Add new section for detailed pattern analysis
+    Write-Host "`nDetailed Pattern Analysis:" -ForegroundColor Yellow
+    
+    if ($patterns.ArithmeticProperties.IsArithmetic) {
+        Write-Host "Arithmetic Pattern Detected:"
+        Write-Host "  Common Difference: $($patterns.ArithmeticProperties.CommonDifference)"
+    }
+    
+    if ($patterns.GeometricProperties.IsGeometric) {
+        Write-Host "Geometric Pattern Detected:"
+        Write-Host "  Common Ratio: $($patterns.GeometricProperties.CommonRatio)"
+    }
+    
+    if ($patterns.RecurrencePatterns.HasRecurrence) {
+        Write-Host "Recurrence Pattern Detected:"
+        Write-Host "  Type: $($patterns.RecurrencePatterns.RecurrenceType)"
+        Write-Host "  Length: $($patterns.RecurrencePatterns.RecurrenceLength)"
+    }
+    
+    if ($patterns.SubsequencePatterns.RepeatingSubsequences.Count -gt 0) {
+        Write-Host "Repeating Subsequences Found:"
+        foreach ($subseq in $patterns.SubsequencePatterns.RepeatingSubsequences) {
+            Write-Host "  Pattern: $($subseq.Pattern -join ', ')"
+            Write-Host "  Starts at: $($subseq.StartIndex)"
+        }
+    }
+    
+    if ($patterns.SymmetryProperties.HasReflectionalSymmetry) {
+        Write-Host "Symmetry Properties:"
+        Write-Host "  Has Reflectional Symmetry: True"
+    }
+    
+    if ($patterns.StepPatterns.HasStepPattern) {
+        Write-Host "Step Patterns:"
+        Write-Host "  Step Sizes: $($patterns.StepPatterns.StepSize -join ', ')"
+        Write-Host "  Regular Steps: $($patterns.StepPatterns.IsRegular)"
+    }
+}
+
+# Example usage:
+# Show-QLSProperties -Length 20 -DetailedAnalysis -Visualize
+
+
+# Add new function for file reading
+function Read-NumberSequence {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$Delimiter = ","
+    )
+    
+    try {
+        # Check if file exists
+        if (-not (Test-Path $FilePath)) {
+            throw "File not found: $FilePath"
+        }
+
+        # Read the file content
+        $content = Get-Content $FilePath
+
+        # Parse numbers from the file
+        $numbers = @()
+        
+        foreach ($line in $content) {
+            # Skip empty lines
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            
+            # Split line by delimiter if specified
+            $lineNumbers = if ($Delimiter) {
+                $line.Split($Delimiter)
+            } else {
+                $line.Split()
+            }
+            
+            # Convert strings to numbers
+            foreach ($num in $lineNumbers) {
+                $trimmedNum = $num.Trim()
+                if ($trimmedNum -match "^-?\d*\.?\d+$") {
+                    $numbers += [double]$trimmedNum
+                }
+            }
+        }
+
+        if ($numbers.Count -eq 0) {
+            throw "No valid numbers found in file"
+        }
+
+        return $numbers
+    }
+    catch {
+        Write-Error "Error reading file: $_"
+        return $null
+    }
+}
+
+# Modify Show-QLSProperties to accept sequence input
+function Show-QLSProperties {
+    param (
+        [Parameter(Mandatory = $false)]
+        [int]$Length,
+        
+        [Parameter(Mandatory = $false)]
+        [double[]]$InputSequence,
+        
+        [Parameter(Mandatory = $false)]
+        [int]$StartNumber = 1,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$DetailedAnalysis,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Visualize,
+
+        [Parameter(Mandatory = $false)]
+        [double[]]$CompareAlphas
+    )
+
+    if ($InputSequence) {
+        $sequence = $InputSequence
+        $differences = @()
+        for ($i = 1; $i -lt $sequence.Count; $i++) {
+            $differences += $sequence[$i] - $sequence[$i - 1]
+        }
+        
+        $secondOrderDifferences = @()
+        for ($i = 1; $i -lt $differences.Count; $i++) {
+            $secondOrderDifferences += $differences[$i] - $differences[$i - 1]
+        }
+        
+        $result = [PSCustomObject]@{
+            Sequence = $sequence
+            Differences = $differences
+            SecondOrderDifferences = $secondOrderDifferences
+            Info = "Analysis of input sequence"
+        }
+    }
+    else {
+        if (-not $Length) {
+            $Length = 10  # Default length if not specified
+        }
+        $result = Get-QLSequence -Length $Length -StartNumber $StartNumber
+    }
+
+    $analytics = Get-AdvancedSequenceAnalytics -Sequence $result.Sequence -Differences $result.Differences
+    $patterns = Get-PatternAnalysis -Sequence $result.Sequence -Differences $result.Differences
+    
+    Write-Host "Sequence Analysis" -ForegroundColor Cyan
+    Write-Host "=================" -ForegroundColor Cyan
+    
+    if ($Visualize) {
+        Show-SequenceVisualization -Sequence $result.Sequence -Title "Sequence Visualization"
+        Show-SequenceVisualization -Sequence $result.Differences -Title "Differences Visualization"
+    }
+    
+    Write-Host "`nBasic Properties:" -ForegroundColor Yellow
+    Write-Host "Sequence Length: $($result.Sequence.Count)"
+    Write-Host "Sequence: $($result.Sequence -join ', ')"
+    Write-Host "First-Order Differences: $($result.Differences -join ', ')"
+    Write-Host "Second-Order Differences: $($result.SecondOrderDifferences -join ', ')"
+    
+    # [Rest of the function remains the same]
+}
+
+# Add new function to analyze file
+function Analyze-NumberFile {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$Delimiter = ",",
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$DetailedAnalysis,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$Visualize
+    )
+    
+    Write-Host "Reading numbers from: $FilePath" -ForegroundColor Cyan
+    
+    $numbers = Read-NumberSequence -FilePath $FilePath -Delimiter $Delimiter
+    
+    if ($null -eq $numbers) {
+        return
+    }
+    
+    Write-Host "Found $($numbers.Count) numbers in file`n"
+    
+    Show-QLSProperties -InputSequence $numbers -DetailedAnalysis:$DetailedAnalysis -Visualize:$Visualize
+}
+
+# [Previous functions remain the same]
+
+# Example usage:
+<#
+# Create a sample file
+@"
+1, 2, 3, 5, 8, 13, 21, 34
+"@ | Out-File "sequence.txt"
+
+# Analyze the file
+Analyze-NumberFile -FilePath "sequence.txt" -DetailedAnalysis -Visualize
+
+# Analyze with different delimiter
+Analyze-NumberFile -FilePath "sequence.txt" -Delimiter " " -DetailedAnalysis
+#>
