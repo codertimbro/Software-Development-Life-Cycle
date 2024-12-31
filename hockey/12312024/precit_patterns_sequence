@@ -1182,3 +1182,215 @@ Analyze-NumberFile -FilePath "sequence.txt" -DetailedAnalysis -Visualize
 # Analyze with different delimiter
 Analyze-NumberFile -FilePath "sequence.txt" -Delimiter " " -DetailedAnalysis
 #>
+
+
+function Get-PolynomialGrowth {
+    param(
+        [double[]]$Sequence,
+        [double]$Tolerance = 0.0001
+    )
+
+    $polynomialPatterns = @{
+        IsPolynomial = $false
+        Degree = 0
+        Coefficients = @()
+        FitQuality = 0.0
+        PredictedNext = 0
+        Confidence = 0.0
+    }
+
+    # Function to calculate polynomial values
+    function Get-PolynomialValue {
+        param($x, $coefficients)
+        $result = 0
+        for ($i = 0; $i -lt $coefficients.Count; $i++) {
+            $result += $coefficients[$i] * [Math]::Pow($x, $i)
+        }
+        return $result
+    }
+
+    # Try fitting polynomials of different degrees
+    for ($degree = 1; $degree -le [Math]::Min(4, $Sequence.Count - 1); $degree++) {
+        $matrix = New-Object 'double[,]' ($Sequence.Count), ($degree + 1)
+        $vector = New-Object double[] $Sequence.Count
+
+        # Build the system of equations
+        for ($i = 0; $i -lt $Sequence.Count; $i++) {
+            for ($j = 0; $j -le $degree; $j++) {
+                $matrix[$i, $j] = [Math]::Pow($i, $j)
+            }
+            $vector[$i] = $Sequence[$i]
+        }
+
+        # Solve using least squares (simplified)
+        $coefficients = @()
+        # ... [Matrix solving code would go here - simplified for example]
+        # In practice, you'd use a proper matrix library for solving
+
+        # Calculate fit quality
+        $sumSquaredError = 0
+        for ($i = 0; $i -lt $Sequence.Count; $i++) {
+            $predicted = Get-PolynomialValue $i $coefficients
+            $error = $Sequence[$i] - $predicted
+            $sumSquaredError += $error * $error
+        }
+
+        if ($sumSquaredError -lt $Tolerance) {
+            $polynomialPatterns.IsPolynomial = $true
+            $polynomialPatterns.Degree = $degree
+            $polynomialPatterns.Coefficients = $coefficients
+            break
+        }
+    }
+
+    return $polynomialPatterns
+}
+
+function Get-SportsScorePatterns {
+    param(
+        [double[]]$Sequence,
+        [string]$Sport = "NHL"
+    )
+
+    $scorePatterns = @{
+        CommonScores = @{}
+        ScoringRuns = @()
+        PeriodPatterns = @{}
+        Momentum = @{}
+        Predictions = @{}
+    }
+
+    switch ($Sport) {
+        "NHL" {
+            # NHL-specific pattern detection
+            $scorePatterns.CommonScores = @{
+                Mode = ($Sequence | Group-Object | Sort-Object Count -Descending | Select-Object -First 1).Name
+                FrequentScores = $Sequence | Group-Object | Where-Object Count -ge 2 | Select-Object Name, Count
+            }
+
+            # Detect scoring runs
+            $currentRun = @($Sequence[0])
+            for ($i = 1; $i -lt $Sequence.Count; $i++) {
+                if ($Sequence[$i] -gt $Sequence[$i-1]) {
+                    $currentRun += $Sequence[$i]
+                }
+                else {
+                    if ($currentRun.Count -ge 3) {
+                        $scorePatterns.ScoringRuns += ,@($currentRun)
+                    }
+                    $currentRun = @($Sequence[$i])
+                }
+            }
+
+            # Analyze period patterns (assuming 3 periods)
+            $periodSize = [Math]::Floor($Sequence.Count / 3)
+            if ($periodSize -gt 0) {
+                $scorePatterns.PeriodPatterns = @{
+                    Period1 = ($Sequence[0..($periodSize-1)] | Measure-Object -Average).Average
+                    Period2 = ($Sequence[$periodSize..(2*$periodSize-1)] | Measure-Object -Average).Average
+                    Period3 = ($Sequence[(2*$periodSize)..($Sequence.Count-1)] | Measure-Object -Average).Average
+                }
+            }
+
+            # Calculate momentum (recent trend)
+            $recentGames = [Math]::Min(5, $Sequence.Count)
+            $recentScores = $Sequence[($Sequence.Count - $recentGames)..($Sequence.Count - 1)]
+            $scorePatterns.Momentum = @{
+                RecentAverage = ($recentScores | Measure-Object -Average).Average
+                Trend = if ($recentScores[-1] -gt ($recentScores | Measure-Object -Average).Average) {"Up"} else {"Down"}
+            }
+
+            # Predict next score
+            $predictedScore = @{
+                Basic = [Math]::Round(($Sequence | Measure-Object -Average).Average, 1)
+                Weighted = 0.0
+                Range = @()
+            }
+
+            # Weighted prediction using recent games more heavily
+            $weights = @(0.4, 0.25, 0.15, 0.1, 0.1)  # Most recent first
+            $weightedSum = 0
+            $usedWeights = 0
+            for ($i = 0; $i -lt [Math]::Min(5, $Sequence.Count); $i++) {
+                $weightedSum += $Sequence[$Sequence.Count - 1 - $i] * $weights[$i]
+                $usedWeights += $weights[$i]
+            }
+            $predictedScore.Weighted = [Math]::Round($weightedSum / $usedWeights, 1)
+
+            # Calculate probable range
+            $std = [Math]::Sqrt(($Sequence | ForEach-Object { [Math]::Pow($_ - $predictedScore.Basic, 2) } | Measure-Object -Average).Average)
+            $predictedScore.Range = @(
+                [Math]::Max(0, [Math]::Round($predictedScore.Weighted - $std, 1)),
+                [Math]::Round($predictedScore.Weighted + $std, 1)
+            )
+
+            $scorePatterns.Predictions = $predictedScore
+        }
+    }
+
+    return $scorePatterns
+}
+
+function Show-ScorePrediction {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+        [Parameter(Mandatory = $false)]
+        [string]$Sport = "NHL",
+        [Parameter(Mandatory = $false)]
+        [switch]$DetailedAnalysis
+    )
+
+    $scores = Read-NumberSequence -FilePath $FilePath
+    if ($null -eq $scores) { return }
+
+    $patterns = Get-SportsScorePatterns -Sequence $scores -Sport $Sport
+    $polynomialAnalysis = Get-PolynomialGrowth -Sequence $scores
+
+    Write-Host "Score Analysis and Prediction" -ForegroundColor Cyan
+    Write-Host "===========================" -ForegroundColor Cyan
+
+    Write-Host "`nHistorical Scores:" -ForegroundColor Yellow
+    Write-Host ($scores -join ', ')
+
+    Write-Host "`nScore Patterns:" -ForegroundColor Yellow
+    Write-Host "Most Common Score: $($patterns.CommonScores.Mode)"
+    Write-Host "Period Averages:"
+    Write-Host "  Period 1: $([Math]::Round($patterns.PeriodPatterns.Period1, 2))"
+    Write-Host "  Period 2: $([Math]::Round($patterns.PeriodPatterns.Period2, 2))"
+    Write-Host "  Period 3: $([Math]::Round($patterns.PeriodPatterns.Period3, 2))"
+
+    Write-Host "`nMomentum Analysis:" -ForegroundColor Yellow
+    Write-Host "Recent Average: $($patterns.Momentum.RecentAverage)"
+    Write-Host "Current Trend: $($patterns.Momentum.Trend)"
+
+    Write-Host "`nPredictions:" -ForegroundColor Yellow
+    Write-Host "Basic Average: $($patterns.Predictions.Basic)"
+    Write-Host "Weighted Prediction: $($patterns.Predictions.Weighted)"
+    Write-Host "Probable Range: $($patterns.Predictions.Range[0]) - $($patterns.Predictions.Range[1])"
+
+    if ($DetailedAnalysis) {
+        Write-Host "`nDetailed Pattern Analysis:" -ForegroundColor Yellow
+        Write-Host "Scoring Runs: $($patterns.ScoringRuns.Count) significant runs detected"
+        foreach ($run in $patterns.ScoringRuns) {
+            Write-Host "  Run: $($run -join ' → ')"
+        }
+
+        if ($polynomialAnalysis.IsPolynomial) {
+            Write-Host "`nPolynomial Growth Pattern:" -ForegroundColor Yellow
+            Write-Host "Degree: $($polynomialAnalysis.Degree)"
+            Write-Host "Fit Quality: $($polynomialAnalysis.FitQuality)"
+        }
+    }
+}
+
+# Example usage:
+<#
+# Create a sample file with NHL scores
+@"
+2,3,2,4,3,1,4,2,3,5,2,3,4,2,3
+"@ | Out-File "nhl_scores.txt"
+
+# Analyze scores and predict next game
+Show-ScorePrediction -FilePath "nhl_scores.txt" -Sport "NHL" -DetailedAnalysis
+#>
