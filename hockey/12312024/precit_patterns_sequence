@@ -172,3 +172,160 @@ function Test-SequencePredictor {
 # To predict next number in a custom sequence:
 # $mySequence = @(1, 3, 5, 7)
 # Get-NextNumberInSequence -Sequence $mySequence
+
+
+
+function Get-QLSequence {
+    param (
+        [Parameter(Mandatory = $true)]
+        [int]$Length,
+        
+        [Parameter(Mandatory = $false)]
+        [int]$StartNumber = 1,
+
+        [Parameter(Mandatory = $false)]
+        [double]$Alpha = (1 + [Math]::Sqrt(5)) / 2  # Golden ratio as default
+    )
+
+    # Initialize array to store sequence
+    $sequence = New-Object double[] $Length
+    $sequence[0] = $StartNumber
+    
+    # Generate QLS sequence
+    for ($i = 1; $i -lt $Length; $i++) {
+        $sequence[$i] = [Math]::Floor($Alpha * ($i + 1))
+    }
+
+    # Calculate differences
+    $differences = @()
+    for ($i = 1; $i -lt $Length; $i++) {
+        $differences += $sequence[$i] - $sequence[$i - 1]
+    }
+
+    # Calculate second-order differences
+    $secondOrderDifferences = @()
+    for ($i = 1; $i -lt $differences.Count; $i++) {
+        $secondOrderDifferences += $differences[$i] - $differences[$i - 1]
+    }
+
+    return [PSCustomObject]@{
+        Sequence = $sequence
+        Differences = $differences
+        SecondOrderDifferences = $secondOrderDifferences
+        Alpha = $Alpha
+        Info = "QLS using multiplier $Alpha"
+    }
+}
+
+function Get-SequenceAnalytics {
+    param (
+        [Parameter(Mandatory = $true)]
+        [double[]]$Sequence,
+        [Parameter(Mandatory = $true)]
+        [double[]]$Differences
+    )
+
+    # Growth rate analysis
+    $growthRates = @()
+    for ($i = 1; $i -lt $Sequence.Count; $i++) {
+        if ($Sequence[$i-1] -ne 0) {
+            $growthRates += $Sequence[$i] / $Sequence[$i-1]
+        }
+    }
+
+    # Statistical measures
+    $stats = @{
+        Mean = ($Sequence | Measure-Object -Average).Average
+        Median = $Sequence | Sort-Object | Select-Object -Index ([Math]::Floor($Sequence.Count/2))
+        StandardDeviation = [Math]::Sqrt(($Sequence | ForEach-Object { [Math]::Pow($_ - ($Sequence | Measure-Object -Average).Average, 2) } | Measure-Object -Average).Average)
+        DifferenceMean = ($Differences | Measure-Object -Average).Average
+        DifferenceVariance = ($Differences | ForEach-Object { [Math]::Pow($_ - ($Differences | Measure-Object -Average).Average, 2) } | Measure-Object -Average).Average
+    }
+
+    return [PSCustomObject]@{
+        Statistics = $stats
+        GrowthRates = $growthRates
+        AverageGrowthRate = ($growthRates | Measure-Object -Average).Average
+    }
+}
+
+function Show-QLSProperties {
+    param (
+        [Parameter(Mandatory = $true)]
+        [int]$Length,
+        
+        [Parameter(Mandatory = $false)]
+        [int]$StartNumber = 1,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$DetailedAnalysis
+    )
+
+    $result = Get-QLSequence -Length $Length -StartNumber $StartNumber
+    $analytics = Get-SequenceAnalytics -Sequence $result.Sequence -Differences $result.Differences
+    
+    Write-Host "Quasilinear Sequence Analysis" -ForegroundColor Cyan
+    Write-Host "============================" -ForegroundColor Cyan
+    
+    Write-Host "`nSequence (First $Length terms):" -ForegroundColor Yellow
+    Write-Host ($result.Sequence -join ", ")
+    
+    Write-Host "`nBasic Properties:" -ForegroundColor Yellow
+    Write-Host "Length: $Length"
+    Write-Host "Starting Number: $StartNumber"
+    Write-Host "Multiplier (α): $($result.Alpha)"
+    
+    Write-Host "`nFirst-Order Differences:" -ForegroundColor Yellow
+    Write-Host ($result.Differences -join ", ")
+    
+    Write-Host "`nSecond-Order Differences:" -ForegroundColor Yellow
+    Write-Host ($result.SecondOrderDifferences -join ", ")
+    
+    Write-Host "`nStatistical Analysis:" -ForegroundColor Yellow
+    Write-Host "Mean: $($analytics.Statistics.Mean)"
+    Write-Host "Median: $($analytics.Statistics.Median)"
+    Write-Host "Standard Deviation: $($analytics.Statistics.StandardDeviation)"
+    Write-Host "Average Difference: $($analytics.Statistics.DifferenceMean)"
+    Write-Host "Difference Variance: $($analytics.Statistics.DifferenceVariance)"
+    
+    # Verify QLS properties
+    $maxDiff = ($result.Differences | Measure-Object -Maximum).Maximum
+    $minDiff = ($result.Differences | Measure-Object -Minimum).Minimum
+    $diffRange = $maxDiff - $minDiff
+    
+    Write-Host "`nQLS Properties:" -ForegroundColor Yellow
+    Write-Host "Difference Range: [$minDiff, $maxDiff]"
+    Write-Host "Range Size: $diffRange"
+    Write-Host "Bounded Difference Property: $(if ($diffRange -le 2) {'Satisfied'} else {'Not Satisfied'})"
+    
+    if ($DetailedAnalysis) {
+        Write-Host "`nDetailed Growth Analysis:" -ForegroundColor Yellow
+        Write-Host "Growth Rates: $($analytics.GrowthRates -join ", ")"
+        Write-Host "Average Growth Rate: $($analytics.AverageGrowthRate)"
+        
+        # Analyze periodicity
+        $periodicityCheck = @{}
+        $result.Differences | ForEach-Object { 
+            if ($periodicityCheck.ContainsKey($_)) {
+                $periodicityCheck[$_]++
+            } else {
+                $periodicityCheck[$_] = 1
+            }
+        }
+        
+        Write-Host "`nDifference Distribution:" -ForegroundColor Yellow
+        $periodicityCheck.GetEnumerator() | Sort-Object Key | ForEach-Object {
+            Write-Host "Value $($_.Key): $($_.Value) occurrences"
+        }
+    }
+}
+
+# Example usage:
+# Basic analysis:
+# Show-QLSProperties -Length 15
+
+# Detailed analysis:
+# Show-QLSProperties -Length 15 -DetailedAnalysis
+
+# Custom start number:
+# Show-QLSProperties -Length 15 -StartNumber 5 -DetailedAnalysis
