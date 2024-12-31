@@ -1,0 +1,174 @@
+# Function to predict next number in sequence
+function Predict-NextNumber {
+    param (
+        [array]$Sequence
+    )
+
+    # Check for arithmetic sequence
+    $diff = $Sequence[1] - $Sequence[0]
+    $isArithmetic = $true
+    for ($i = 2; $i -lt $Sequence.Count; $i++) {
+        if ($Sequence[$i] - $Sequence[$i-1] -ne $diff) {
+            $isArithmetic = $false
+            break
+        }
+    }
+    if ($isArithmetic) {
+        return $Sequence[-1] + $diff
+    }
+
+    # Check for geometric sequence
+    $ratio = $Sequence[1] / $Sequence[0]
+    $isGeometric = $true
+    for ($i = 2; $i -lt $Sequence.Count; $i++) {
+        if ($Sequence[$i] / $Sequence[$i-1] -ne $ratio) {
+            $isGeometric = $false
+            break
+        }
+    }
+    if ($isGeometric) {
+        return $Sequence[-1] * $ratio
+    }
+
+    # If no pattern is found, return null
+    return $null
+}
+
+# Example usage:
+$sequence = @(1, 2, 3, 4, 5)
+$nextNumber = Predict-NextNumber -Sequence $sequence
+Write-Host "Next number in sequence: $nextNumber"
+
+$sequence = @(2, 4, 8, 16, 32)
+$nextNumber = Predict-NextNumber -Sequence $sequence
+Write-Host "Next number in sequence: $nextNumber"
+
+function Get-NextNumberInSequence {
+    param (
+        [Parameter(Mandatory = $true)]
+        [double[]]$Sequence
+    )
+
+    # Need at least 3 numbers to detect a pattern
+    if ($Sequence.Count -lt 3) {
+        Write-Error "Please provide at least 3 numbers in the sequence"
+        return $null
+    }
+
+    # Check for arithmetic sequence (constant difference)
+    $differences = @()
+    for ($i = 1; $i -lt $Sequence.Count; $i++) {
+        $differences += $Sequence[$i] - $Sequence[$i - 1]
+    }
+
+    # Check if all differences are equal (arithmetic sequence)
+    $isArithmetic = $true
+    for ($i = 1; $i -lt $differences.Count; $i++) {
+        if ([Math]::Abs($differences[$i] - $differences[$i - 1]) -gt 0.0001) {
+            $isArithmetic = $false
+            break
+        }
+    }
+
+    if ($isArithmetic) {
+        $nextNumber = $Sequence[-1] + $differences[0]
+        return @{
+            NextNumber = $nextNumber
+            Pattern = "Arithmetic sequence with common difference of $($differences[0])"
+        }
+    }
+
+    # Check for geometric sequence (constant ratio)
+    $ratios = @()
+    for ($i = 1; $i -lt $Sequence.Count; $i++) {
+        if ($Sequence[$i - 1] -ne 0) {
+            $ratios += $Sequence[$i] / $Sequence[$i - 1]
+        }
+    }
+
+    # Check if all ratios are equal (geometric sequence)
+    $isGeometric = $true
+    for ($i = 1; $i -lt $ratios.Count; $i++) {
+        if ([Math]::Abs($ratios[$i] - $ratios[$i - 1]) -gt 0.0001) {
+            $isGeometric = $false
+            break
+        }
+    }
+
+    if ($isGeometric) {
+        $nextNumber = $Sequence[-1] * $ratios[0]
+        return @{
+            NextNumber = $nextNumber
+            Pattern = "Geometric sequence with common ratio of $($ratios[0])"
+        }
+    }
+
+    # Check for Fibonacci-like sequence (each number is sum of previous two)
+    $isFibonacci = $true
+    for ($i = 2; $i -lt $Sequence.Count; $i++) {
+        if ([Math]::Abs($Sequence[$i] - ($Sequence[$i - 1] + $Sequence[$i - 2])) -gt 0.0001) {
+            $isFibonacci = $false
+            break
+        }
+    }
+
+    if ($isFibonacci) {
+        $nextNumber = $Sequence[-1] + $Sequence[-2]
+        return @{
+            NextNumber = $nextNumber
+            Pattern = "Fibonacci-like sequence (each number is sum of previous two)"
+        }
+    }
+
+    # Check for square numbers
+    $isSquare = $true
+    for ($i = 0; $i -lt $Sequence.Count; $i++) {
+        $sqrt = [Math]::Sqrt($Sequence[$i])
+        if ([Math]::Abs($sqrt - [Math]::Round($sqrt)) -gt 0.0001) {
+            $isSquare = $false
+            break
+        }
+    }
+
+    if ($isSquare) {
+        $lastRoot = [Math]::Sqrt($Sequence[-1])
+        $nextNumber = [Math]::Pow($lastRoot + 1, 2)
+        return @{
+            NextNumber = $nextNumber
+            Pattern = "Square numbers sequence"
+        }
+    }
+
+    # If no pattern is detected
+    return @{
+        NextNumber = $null
+        Pattern = "No common pattern detected"
+    }
+}
+
+# Function to demonstrate usage with example sequences
+function Test-SequencePredictor {
+    $testSequences = @(
+        @(2, 4, 6, 8, 10),              # Arithmetic
+        @(2, 4, 8, 16, 32),             # Geometric
+        @(1, 1, 2, 3, 5, 8),            # Fibonacci
+        @(1, 4, 9, 16, 25),             # Square numbers
+        @(1, 3, 7, 15, 31)              # Unknown pattern
+    )
+
+    foreach ($sequence in $testSequences) {
+        Write-Host "`nAnalyzing sequence: $sequence"
+        $result = Get-NextNumberInSequence -Sequence $sequence
+        Write-Host "Pattern detected: $($result.Pattern)"
+        if ($result.NextNumber -ne $null) {
+            Write-Host "Predicted next number: $($result.NextNumber)"
+        }
+    }
+}
+
+# Example usage:
+# Test-SequencePredictor
+
+# To predict next number in a custom sequence:
+# $mySequence = @(1, 3, 5, 7)
+# Get-NextNumberInSequence -Sequence $mySequence
