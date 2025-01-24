@@ -1,0 +1,41 @@
+#Pull one team data at a time at power ratings settings under ratings and odds
+
+$inputFile = "c:\users\timbro\data.txt"
+$outputFile = "c:\users\timbro\data.csv"
+
+
+# Read the file content
+$content = Get-Content $inputFile
+
+# Extract team name from the first line (not included in the CSV)
+$teamName = $content[0] -replace " Rankings", ""
+
+# Process headers (second line)
+$headers = "Category,Value,Conf,Rank"
+
+# Initialize the output with headers
+$output = @()
+$output += $headers
+
+# Process data rows (starting from the third line)
+$dataRows = $content[2..($content.Length - 1)]
+foreach ($row in $dataRows) {
+    # Remove "#" symbols and split the row into columns
+    $cleanRow = $row -replace "#", ""
+    if ($cleanRow -match "^(.*\S)\s+([\d.]+)\s+(\d+)\s+(\d+)$") {
+        $category = $matches[1]
+        $value = $matches[2]
+        $conf = $matches[3]
+        $rank = $matches[4]
+        # Append processed row to output
+        $output += "$category,$value,$conf,$rank"
+    }
+}
+
+# Write to CSV
+$output | Out-File -FilePath $outputFile -Encoding UTF8
+
+
+
+
+invoke-item $outputFile 
