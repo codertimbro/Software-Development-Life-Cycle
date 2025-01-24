@@ -1,0 +1,66 @@
+param (
+    [Parameter(Mandatory=$true)]
+    [string]$FilePath
+)
+
+$csvData = Import-Csv $FilePath
+$comparisonResults = @()
+
+$groupedCsv = $csvData | Group-Object MatchupID
+
+foreach ($group in $groupedCsv) {
+    if ($group.Group.Count -gt 1) {
+        $columns = ($group.Group[0] | Get-Member -MemberType NoteProperty | Where-Object { $_.Name -ne 'MatchupID' }).Name
+        
+        $baseRecord = $group.Group[0]
+        
+        for ($i = 1; $i -lt $group.Group.Count; $i++) {
+            $compareRecord = $group.Group[$i]
+            $differences = @()
+            
+            foreach ($col in $columns) {
+                $value1 = $baseRecord.$col
+                $value2 = $compareRecord.$col
+                
+                if ($value1 -match '^\d+(\.\d+)?$' -and $value2 -match '^\d+(\.\d+)?$') {
+                    $numValue1 = [double]$value1
+                    $numValue2 = [double]$value2
+                    
+                    if ($numValue1 -ne $numValue2) {
+                        $percentDiff = [math]::Abs(($numValue2 - $numValue1) / $numValue1 * 100)
+                        
+                        $differences += [PSCustomObject]@{
+                            MatchupID = $group.Name
+                            Column = $col
+                            BaseValue = $value1
+                            ComparedValue = $value2
+                            PercentageDifference = "{0:N2}%" -f $percentDiff
+                        }
+                    }
+                }
+                elseif ($value1 -ne $value2) {
+                    $differences += [PSCustomObject]@{
+                        MatchupID = $group.Name
+                        Column = $col
+                        BaseValue = $value1
+                        ComparedValue = $value2
+                        PercentageDifference = "Text Mismatch"
+                    }
+                }
+            }
+            
+            if ($differences.Count -gt 0) {
+                $comparisonResults += $differences
+            }
+        }
+    }
+}
+
+if ($comparisonResults.Count -gt 0) {
+    $comparisonResults | Format-Table -AutoSize
+    $comparisonResults | Export-Csv -Path "ColumnPercentageComparisonResults.csv" -NoTypeInformation
+    Write-Host "Differences found and saved to ColumnPercentageComparisonResults.csv"
+}
+else {
+    Write-Host "No differences found in records with the same MatchupID"
+}
