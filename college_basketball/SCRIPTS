@@ -1,0 +1,47 @@
+param (
+    [string]$inputFile = "c:\python310\data.txt", 
+    [string]$outputFile = "word_list1.txt"
+)
+
+function Update-WordCount {
+    param (
+        [string]$inputFile, 
+        [string]$outputFile
+    )
+
+    # Read the content of the input file, preserving lines
+    $lines = Get-Content -Path $inputFile
+
+    # Initialize a hashtable to store line counts
+    $lineCount = @{}
+
+    # If the output file exists, load existing line counts
+    if (Test-Path -Path $outputFile) {
+        Import-Csv -Path $outputFile | ForEach-Object { 
+            $lineCount[$_.Line] = [int]$_.Count 
+        }
+    }
+
+    # Count occurrences of each complete line
+    foreach ($line in $lines) {
+        if ($lineCount.ContainsKey($line)) {
+            $lineCount[$line]++
+        } else {
+            $lineCount[$line] = 1
+        }
+    }
+
+    # Save the updated line count to the output file
+    $lineCount.GetEnumerator() | ForEach-Object { 
+        [PSCustomObject]@{ 
+            Line = $_.Key 
+            Count = $_.Value 
+        } 
+    } | Export-Csv -Path $outputFile -NoTypeInformation
+}
+
+# Update the line count
+Update-WordCount -inputFile $inputFile -outputFile $outputFile
+
+# Display the updated line count
+Get-Content -Path $outputFile
