@@ -3,3 +3,167 @@ back off for 4 to 5 stars
 Predictive
 Schedule Strength (Future)
 Schedule Strength (Past)
+
+
+# Input Parameters
+$homeTeam = "Team A"
+$awayTeam = "Team B"
+$favoredTeam = "Home" # "Home" or "Away"
+$starRating = 3 # 1-5
+$homeHCA = 0.0 # Home Court Advantage (e.g., +2.4 for St. Mary’s)
+$awayRCP = 0.0 # Road Court Performance (e.g., -10.0 for Tulsa)
+
+# Team Stats (Example values; replace with actual data)
+$homeStats = @{
+    "def Rebounds" = 30
+    "off FT Att" = 20
+    # Add all other categories from the list...
+}
+
+$awayStats = @{
+    "def Rebounds" = 28
+    "off FT Att" = 18
+    # Add all other categories from the list...
+}
+
+# Star Rating Base Probabilities
+$starProbabilities = @{
+    1 = @{ "Home" = 0.52; "Away" = 0.56 }
+    2 = @{ "Home" = 0.63; "Away" = 0.63 }
+    3 = @{ "Home" = 0.75; "Away" = 0.75 }
+    4 = @{ "Home" = 0.80; "Away" = 0.78 }
+    5 = @{ "Home" = 0.90; "Away" = 0.89 }
+}
+
+# Predictive Category Weights (Normalized)
+$categoryWeights = @{
+    "def Rebounds" = 0.615384615
+    "off FT Att" = 0.461538462
+    # Add all other categories...
+} | ForEach-Object { 
+    $totalWeight = ($_.Values | Measure-Object -Sum).Sum
+    $_ | ForEach-Object { @{$_.Key = $_.Value / $totalWeight} }
+}
+
+# Calculate Base Probability from Star Rating
+$baseProb = $starProbabilities[$starRating][$favoredTeam]
+
+# Adjust for RCP/HCA (Convert to probability impact)
+# Example: 1 RCP/HCA point ≈ 1% probability adjustment
+$probAdjustment = ($awayRCP - $homeHCA) * 0.01
+$adjustedProb = $baseProb + $probAdjustment
+
+# Calculate Category Score Adjustment
+$homeScore = 0
+$awayScore = 0
+foreach ($category in $categoryWeights.Keys) {
+    $homeScore += $homeStats[$category] * $categoryWeights[$category]
+    $awayScore += $awayStats[$category] * $categoryWeights[$category]
+}
+
+# Normalize category score impact (scaling factor may require calibration)
+$scoreDifference = ($homeScore - $awayScore) * 0.001 # Adjust scaling as needed
+$finalProb = $adjustedProb + $scoreDifference
+
+# Output Result
+Write-Host "Adjusted Win Probability for $favoredTeam ($homeTeam vs. $awayTeam): $([Math]::Round($finalProb * 100, 2))%"
+
+Determining College Basketball’s True Road Court Performance:
+The other day, I released my annual study on True Home Court Advantage in college basketball. Some of the early returns from Thursday night were fantastic, as recognized top-performing hosts like Nebraska came up with big wins while lesser-rated home performers like UC-Santa Barbara lost outright as favorites. I always get a nice response from readers when I post that piece, and lately, I’ve tried to get an immediate turnaround on the follow-up piece, True Road Performance.
+
+In truth, one side of the coin is not as useful without the other. With that in mind, here is that follow-up piece. The goal is to find and share which teams have been performing best and worst on the road across the country recently, both in terms of wins and losses and what I term to be True Road Court Performance Ratings. I then take these findings and use them to set specific road court points for every team, which I use in the Power, Effective Strength, and Bettors Ratings you see on VSiN.com every day.
+
+***Top College Basketball Betting Resources***
+
+*Join thousands of other sports bettors and unlock access to picks, public betting splits data, & the VSiN live video broadcast by upgrading to VSiN Pro. Grab your first month for less than $10.*
+
+NCAAB Expert Picks
+Greg Peterson's Daily Lines & Projections
+NCAAB Betting Hub
+NCAAB Week-By-Week Schedule
+Parlay Calculator
+NCAAB Betting Splits
+NCAAB Betting Odds
+Like yesterday’s home court edition, I believe this piece and the accompanying chart will serve bettors in a variety of ways. First and foremost, revealing which teams are the best and worst on the road across in the country, not only by their formulated True Road Court Performance points but also by their outright and point spread records, as well as their scoring totals. You will also be able to quickly spot which teams are better or worse on the road when it comes to conference play versus non-conference play. Use these findings to aid your wagering for the rest of the season.
+
+To determine which teams hold the best/worst True Road Court Performance in college basketball, I have taken the teams’ game logs in true road games since the start of the 2022-23 season, or essentially the last 2-1/2 seasons. I compared their average power rating in those games to their opponents’ average power rating, using my actual logged numbers during that span for every game. This margin would be considered the amount by which they should have won or lost when meeting on a neutral court or the expected margin. I then compared this amount to the actual point differential that the team accumulated in those games. In essence, it compares the actual result against the expected results. This is the True Road Court Performance. Obviously, the teams that had a greater actual differential than expected differential played the “best” at home. For college teams, the margins went as high as +2.4 for St Mary’s (CA) to -10 for Tulsa.
+
+I don’t personally assign the Gaels 2.4 points of road court “advantage,” but I will give them more than the average across all teams, which I represent as 0.0. Of course, St. Mary’s is seemingly always worthy of your betting consideration when oddsmakers don’t give them the respect they perhaps deserve on the road, as evidenced in their last road outing when they scored 30 straight points in beating Santa Clara when playing as hosts. They are 20-2 SU and 14-8 ATS on the road since 2022.
+
+I also don’t think any reasonable handicapper would assign -10 points to Tulsa on the road, but to not penalize the Golden Hurricane at all would also be erroneous. For what it’s worth, people who saw this piece a year ago also found Tulsa at the bottom at that point, but at a rating of -8.7. They have actually gotten much worse since, and hopefully, bettors have taken advantage regularly.
+
+Most bookmakers will assign an average of about 3.0 points in a college basketball game to a home team. I have found that the true college basketball number is closer to 3.3 for non-conference games over the last 2-1/2 seasons but drops to about 2.9 in conference play. The average road court rating I give each team averages out to 0.0. However, the range goes from +0.5 to -0.5 points. An important reminder: I don’t specifically assign my road court ratings in accordance with the True Road Court Performance Rating, as I also give strong consideration to the straight up and ATS records.
+
+Let’s take a quick look at some of the other highlights I have found from my college road court performance study, then put both of these pieces together immediately to take advantage of the huge board of games on tap for this weekend.
+
+College Basketball Road Court Performance Study Highlights
+· Collectively, the conference with the best overall true road court performance rating is easily the Patriot League, at -1.57. That is well ahead of the next five conferences, the Ivy (-1.94), Big West (-2.03), Southland (-2.27), and MAAC (-2.3). The power conference with the best average road rating has been the Big East, at -2.83. If you read yesterday’s piece, you’ll probably recognize that these numbers almost directly conflict with the home number. That’s not a coincidence.
+
+· The conferences with the least true road court performance in college basketball over the last 2-1/2 seasons have been the Big 12 (-4.76), Conference USA (-4.13), Sun Belt (-4.11), MEAC (-3.95), and Big Ten (-3.94).
+
+· The top six conferences in terms of in-conference play True RCP would be the Patriot (-0.63), Big West (-1.35), MAAC (-1.42), Northeast (-1.67), and Southland (-1.83). As you can see, there are three of the five conferences that are the same from the overall list. The power league with the best True RCP rating has been the Big East at -2.83, and you’ll recognize that the figure is the exact same as the overall number the Big East teams have shown on the road. Collectively, their road play has been both consistent and a half-point better than the rest of college basketball on average.
+
+· Three of the lowest-rated conferences in terms of True RCP in conference games are power leagues, with the Big 12 pacing the field at -4.51, followed by the WAC (-4.17), MEAC (-4.09), SEC (-3.99) and Big Ten (-3.96). It goes to show how tough it can be to get road wins in those power conference environments. As I mentioned before, a lot of oddsmakers will generally assign 3 points in a home court edge. These numbers prove it can be at least a point higher in many environments.
+
+· Four teams have won outright at better than a 75% rate in true road games in college basketball over the last 2-1/2 seasons. They are St Mary’s (CA) (20-2), Houston (22-3), Coll of Charleston (26-6), and Gonzaga (19-5). As you can see, three of those teams are mid-majors and typically aren’t welcomed in many power conference foes’ homes often. Besides those four teams, which are all 17-3 or better, Colgate, at 19-3, helps round out the nation’s top five of the best teams on the road in league play during that span.
+
+· The worst outright record for any college basketball team on the true road since the start of the 2022-23 season belongs to Mississippi Valley State, at 1-56! VMI (3-38), Cal Poly-SLO (3-39), NJIT (4-40) and DePaul (3-29) are the four other schools that have won less than 10% of lined road games. That nation’s worst in-conference home record in that same span belongs to Cal Poly-SLO at 0-23.
+
+· There are five teams that have compiled ATS records of better than 65% in college basketball true road games since the start of the 2022-23 season. They are South Carolina (20-9 ATS), Pittsburgh (18-9 ATS), Bucknell (29-15 ATS), Providence (19-10 ATS), and South Florida (19-10 ATS). Alcorn State owns the best in-conference ATS mark in that time span, 16-3 ATS, followed by Lehigh (18-5 ATS), and Utah Valley State (16-5 ATS). South Carolina’s impressive ATS mark is even more meaningful when you consider how much the SEC has struggled overall in road play in recent years.
+
+· There have been five college basketball teams to go 30% or worse ATS over the last 2-1/2 seasons on the road. They are Tulsa (5-21 ATS), Virginia Tech (6-22 ATS), Middle Tennessee State (7-23 ATS), Pepperdine (9-21 ATS), and Georgia State (10-23 ATS).
+
+· Only MTSU (3-17 ATS), Georgia State (4-16 ATS), SIUE (5-18 ATS), Nebraska (6-19 ATS), and Longwood (5-16 ATS) are under 25% against the Vegas number in league play on the road since the start of the 2022-23 season. You’ll recognize MTSU & Nebraska as some of the better teams from the home study. These are program tendencies that simply can’t be ignored until something definitively changes.
+
+· The three teams that have played to the average biggest point spreads on the true road in recent seasons are no surprise. That list is topped by Gonzaga (-10.6), and followed by Houston (-8.1), St Mary’s (CA) (-8.1), Arizona (-6.3), and Connecticut (-5.7).
+
+· Four teams have been worse than 16-point average underdogs on the road in recent seasons of college basketball and they are Mississippi Valley State (+25.2), Florida A&M (+18.9), Houston Christian (+16.9), and Coppin State (+16.2).
+
+·There have been six college basketball teams that have averaged at least 80 PPG in their road games over the last 2-1/2 seasons. They are:
+Gonzaga – 86.1 PPG
+Alabama – 82.5
+Cornell – 82.3
+Memphis – 81.1
+Toledo – 81.1
+Arizona – 80.4
+
+· There have been four teams in college basketball that have allowed 65 PPG or fewer in road games since the start of the 2022-23 season. That list includes:
+St Mary’s (CA) – 60.1 PPG
+North Texas – 62.8
+Houston – 64.5
+Wagner – 64.5
+
+·  The only four teams that have outscored opponents by more than 7.0 PPG on the road since 2022 are St Mary’s-CA (+14.4), Gonzaga (+11.8), Houston (+9.3), and Duke (+7.1).
+
+·  Using my formula comparing how much teams have won by at home as compared to how much they were supposed to win by based upon average power ratings, the top teams for True Road Court Performance in college basketball over the last 2-1/2 seasons have been:
+St. Mary’s (CA) +2.4
+UC San Diego +1.2
+McNeese State +0.4
+South Florida +0.4
+UNLV +0.1
+
+· This is the top list when considering only in-conference games:
+UC San Diego +2.6
+UMBC +2.3
+St Mary’s (CA) +2.2
+Merrimack +2.1
+UNC-Greensboro +1.9
+
+· The teams with the worst True Home Court Advantage ratings in all of college basketball based upon their home performances over the last 2-1/2 seasons have been:
+Tulsa -10.0
+Utah -9.6
+Virginia -9.0
+South Dakota -7.6
+Virginia Tech -7.3
+
+·  Similarly, the teams with the worst True Home Court Advantage ratings in conference play have been:
+Utah -10.0
+Tulsa -9.8
+Virginia -9.0
+Coastal Carolina -8.7
+Denver -8.4
+
+You will find the entire list of all 364 NCAA D-1 teams and their road court performance on the chart below, with a breakdown by overall and conference games. They are sorted in order of True Road Court Performance overall rating. Adjustments to the strength ratings I post on VSiN.com have already been made.
+
+By the way, after reading the article on home court advantage yesterday, a VSiN reader asked me what I thought the best way to employ these ratings would be. I suggest finding the matchups with the worst road court teams, visiting the best home court teams and vice versa, and track (or back) those games until you are comfortable with a similar strategy or the results. Good luck!
+
