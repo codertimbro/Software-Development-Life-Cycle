@@ -167,3 +167,38 @@ You will find the entire list of all 364 NCAA D-1 teams and their road court per
 
 By the way, after reading the article on home court advantage yesterday, a VSiN reader asked me what I thought the best way to employ these ratings would be. I suggest finding the matchups with the worst road court teams, visiting the best home court teams and vice versa, and track (or back) those games until you are comfortable with a similar strategy or the results. Good luck!
 
+def Rebounds	0.615384615
+off FT Att	0.461538462
+off Turnovers	0.538461538
+def Points Scored	0.615384615
+off FT Made	0.538461538
+def Steals	0.769230769
+def FG Pct	0.538461538
+def FG Made	0.615384615
+def Turnovers	0.461538462
+def 3PT Made	0.461538462
+def Fouls	0.384615385
+off FG Att	0.692307692
+def FT Made	0.153846154
+def FG Att	0.692307692
+def 3PT Att	0.307692308
+off FG Made	0.615384615
+off Points Scored	0.692307692
+off Steals	0.538461538
+def FT Pct	0.461538462
+off 3PT Att	0.307692308
+off Fouls	0.230769231
+off 3PT Pct	0.538461538
+def Blocks	0.461538462
+def Assists	0.538461538
+def FT Att	0.307692308
+off Off Reb	0.384615385
+off Assists	0.461538462
+off Rebounds	0.461538462
+def 3PT Pct	0.461538462
+off 3PT Made	0.307692308
+def Off Reb	0.307692308
+off FG Pct	0.538461538
+off Blocks	0.538461538
+off FT Pct	0.384615385
+	
