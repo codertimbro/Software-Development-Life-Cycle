@@ -16,3 +16,38 @@ Google’s AI Course for Beginners (in 10 minutes)! by Jeff Su
 AI, Machine Learning, Deep Learning and Generative AI Explained by IBM Technology
 What Is AI? | Artificial Intelligence | What is Artificial Intelligence? | AI In 5 Mins |Simplilearn by Simplilearn
 AI vs Machine Learning by IBM Technology
+
+While there aren't many videos specifically dedicated to predicting sports results with AI, here are some resources that touch upon the topic and provide valuable insights:
+
+AI Predicts Super Bowl LIX Winner - YouTube: This video demonstrates how AI models, like linear regression and decision trees, can be used to predict the outcome of a Super Bowl game. It explains the process of data collection, model training, and result interpretation.
+Opens in a new window
+www.youtube.com
+AI Predicts Super Bowl LIX Winner YouTube
+
+I used AI to predict the football scores - YouTube: This video showcases an experiment where AI models are used to predict football scores. It highlights the challenges and limitations of AI in sports prediction, as well as the importance of data interpretation.
+Opens in a new window
+www.youtube.com
+I used AI to predict the football scores YouTube
+
+Boost Sports Video Annotation for AI-Powered Performance Analysis - Labelvisor: This article discusses the role of AI in sports video analysis, including player performance tracking, injury prediction, and tactical insights. While not directly focused on result prediction, it provides a foundation for understanding how AI can be used to analyze sports data.
+Opens in a new window
+www.labelvisor.com
+Boost Sports Video Annotation for AIPowered Performance Analysis Labelvisor
+
+Sport Results-Free, Accurate Sports Predictions - Yeschat: This article introduces an AI tool called Sport Results, which provides sports predictions and statistical insights. It explains how the tool works and its potential applications in sports betting and analysis.
+Opens in a new window
+www.yeschat.ai
+Sport ResultsFree, Accurate Sports Predictions Yeschat
+
+Remember that AI in sports prediction is still an evolving field, and the accuracy of predictions can vary depending on the complexity of the model and the quality of data used. These resources provide a starting point for understanding the fundamentals and applications of AI in this domain.
+
+Here are some videos that can help you build an AI model for sports prediction:
+
+Predicting Football Results and Beating the Bookies with Machine Learning by Crypto Wizards
+I Built a Sports Betting Bot with OddsJam and ChatGPT by Siraj Raval
+Football Betting Algorithm in Python Explained by Liam Hartley
+Predict Football Match Winners With Machine Learning And Python by Dataquest
+Predict the Outcome of Football Matches Using this Model by Kie Millett
+I hope these videos help you get started on building your AI model for sports prediction!
+
+YouTube
