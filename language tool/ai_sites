@@ -92,3 +92,78 @@ www.youtube.com
 Linear Regression made easy by Brandon Foltz
 
 One-Variable Linear Regression | The Analytics Edge | Sloan School of Management | MIT OpenCourseWare: This video covers the basics of one-variable linear regression, including how to fit a line to data and how to interpret the results.
+
+Here are some of the best videos on scraping college basketball data:
+
+SPORTS ANALYTICS PORJECT - Scraping ESPN for Data - R Programming by Matt C137
+BeautifulSoup + Requests | Web Scraping in Python by Alex The Analyst
+Scraping NBA Data - With Python! by Kerry Sports Analyst
+
+Foundational Understanding (Start Here):
+
+3Blue1Brown's Neural Network series: While not strictly about training, these videos provide an incredibly intuitive understanding of how neural networks work, which is crucial before diving into training. Search "3Blue1Brown Neural Networks" on YouTube. This is highly recommended.
+StatQuest (Josh Starmer): Look for videos on specific algorithms you're interested in (e.g., "Linear Regression StatQuest," "Logistic Regression StatQuest," "Decision Trees StatQuest"). He explains complex concepts clearly and concisely.
+General Model Training Principles:
+
+Machine Learning Crash Course (Google): A good overview of fundamental ML concepts, including training, evaluation, and common pitfalls. Search "Machine Learning Crash Course Google" on YouTube.
+Andrew Ng's Machine Learning Course (Coursera/YouTube): A classic and comprehensive course. While not all videos are on YouTube, many are available. Search "Andrew Ng Machine Learning" on YouTube. This is more in-depth and mathematically oriented.
+Deep Learning Specifics (If applicable):
+
+fast.ai: Jeremy Howard's fast.ai courses are known for their practical, code-first approach to deep learning. Many of the lectures are available on YouTube. Search "fast.ai" on YouTube.
+TensorFlow Tutorials: If you're using TensorFlow, their official tutorials are a great place to start. Search "TensorFlow Tutorials" on YouTube.
+PyTorch Tutorials: Similarly, if you're using PyTorch, check out their tutorials. Search "PyTorch Tutorials" on YouTube.
+Advanced Training Techniques:
+
+Papers with Code: This website (and associated YouTube channel) often features videos explaining recent research papers on advanced training techniques, like optimization algorithms, regularization, and hyperparameter tuning.
+Practical Tips and Best Practices:
+
+Weights & Biases: This platform offers resources and tutorials on experiment tracking, visualization, and best practices for training ML models. Search "Weights & Biases" on YouTube.
+Key Concepts to Look For When Learning:
+
+Loss Functions: Understanding different loss functions and when to use them.
+Optimization Algorithms: Gradient descent, Adam, RMSprop, etc.
+Regularization: L1, L2, dropout.
+Hyperparameter Tuning: Grid search, random search, Bayesian optimization.
+Evaluation Metrics: Accuracy, precision, recall, F1-score, AUC, etc.
+Overfitting and Underfitting: How to diagnose and address these issues.
+Data Augmentation: Techniques to increase the size and diversity of your training data.
+
+Mastering an AI job interview requires a blend of technical prowess, communication skills, and strategic preparation. Here's a breakdown of video resources and key areas to focus on, categorized for clarity:
+
+1. Foundational Interview Skills (Applicable to any job, but crucial):
+
+"Tell Me About Yourself" - Best Answer (Examples included!) by Don Georgevich: This video provides excellent guidance on crafting a compelling "elevator pitch" that highlights your relevant skills and experience.
+STAR Method Explained + Examples by The Interview Guys: The STAR method (Situation, Task, Action, Result) is essential for structuring your behavioral interview answers. This video explains it clearly with examples.
+How to Answer Behavioral Interview Questions (STAR Method) by Mock Questions: More practice with the STAR method and different types of behavioral questions.
+2. AI-Specific Interview Preparation:
+
+AI Interview Questions and Answers | Artificial Intelligence Interview Preparation | Edureka: This video covers a range of AI-related questions, from basic concepts to more advanced topics. It's a good starting point to get an idea of the types of questions you might encounter.
+Machine Learning Interview Questions and Answers | Machine Learning Interview Preparation | Edureka: Focuses specifically on machine learning interview questions, covering algorithms, model evaluation, and practical scenarios.
+Deep Learning Interview Questions and Answers | Deep Learning Interview Preparation | Edureka: Delves into deep learning concepts, architectures, and applications.
+Top 10 Artificial Intelligence Interview Questions & Answers: Many channels offer videos like this. Search YouTube for "Top AI Interview Questions" to find ones that suit your level. These are good for quick reviews.
+3. Technical Skills and Knowledge (Essential for AI Roles):
+
+(Algorithm-Specific Videos): Search for videos explaining specific algorithms relevant to the role you're applying for (e.g., "Support Vector Machines explained," "Convolutional Neural Networks explained"). 3Blue1Brown, StatQuest, and other educational channels are excellent resources.
+(Coding Practice): LeetCode, HackerRank, and Codewars are platforms with practice coding challenges. Many channels offer solutions and explanations for these challenges. Search YouTube for "LeetCode [Problem Name]" or "HackerRank [Problem Name]".
+(Project Walkthroughs): If you have personal AI projects, create videos explaining your project's goals, methods, and results. This is a great way to demonstrate your skills and passion.
+4. Portfolio and Projects:
+
+(Showcasing Your Work): While not strictly interview-focused, having a strong portfolio (GitHub, personal website) is crucial for AI roles. Videos demonstrating your projects are even better.
+5.  Behavioral and Soft Skills (Often Overlooked, but Key):
+
+(Communication Skills): Practice explaining technical concepts clearly and concisely. Record yourself and analyze your communication style.
+(Problem-Solving): Be prepared to discuss your approach to solving complex problems, even if you don't arrive at the perfect solution.
+(Teamwork): Highlight your experience working in teams and your ability to collaborate effectively.
+Key Areas to Focus On:
+
+Fundamentals: Solid understanding of core AI/ML concepts is paramount.
+Algorithms: Deep knowledge of algorithms relevant to the job description.
+Coding: Proficiency in relevant programming languages (Python, R, etc.).
+Projects: Demonstrable experience through personal projects or contributions.
+Communication: Ability to explain complex topics clearly and concisely.
+Problem-Solving: Logical and structured approach to problem-solving.
+Behavioral Questions: Prepare using the STAR method.
+Domain Knowledge: Familiarity with the specific industry or application area.
+Important Tip:  Practice, practice, practice!  Mock interviews are invaluable.  Ask a friend, mentor, or career counselor to conduct mock interviews with you.  Record yourself and analyze your performance.
+
+By combining these resources and focusing on the key areas mentioned above, you'll be well-prepared to ace your AI job interviews. Remember to tailor your preparation to the specific requirements of each role you apply for. Good luck!
